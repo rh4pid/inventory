@@ -55,8 +55,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",       // Local React/Vite development
-                "https://www.yourdomain.com",  // Production domain
+                "http://localhost:3000",        // Next.js development
+                "http://localhost:5173",        // Vite development (alternative)
+                "https://www.yourdomain.com",   // Production domain
                 "https://yourdomain.com"
         ));
 

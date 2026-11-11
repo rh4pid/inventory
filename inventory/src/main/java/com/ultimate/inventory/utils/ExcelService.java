@@ -1,9 +1,8 @@
 package com.ultimate.inventory.utils;
 
-import com.ultimate.inventory.DTO.ResponseDTO;
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,13 +19,12 @@ import java.util.Map;
 @Service
 public class ExcelService {
 
+    private static final Logger log = LoggerFactory.getLogger(ExcelService.class);
+
     public <T> List<T> readExcel(MultipartFile file, Class<T> excelDTO) {
         List<T> result = new ArrayList<>();
-        ResponseDTO responseDTO = new ResponseDTO();
 
         if (file == null || file.isEmpty()) {
-            responseDTO.setStatus(false);
-            responseDTO.setMessage("Excel file is required");
             return null;
         }
 
@@ -76,7 +74,7 @@ public class ExcelService {
             }
         } catch (IOException | NoSuchMethodException | InstantiationException | IllegalAccessException |
                  InvocationTargetException e) {
-            e.printStackTrace();
+            log.error("Failed to parse Excel file: {}", e.getMessage(), e);
             return null;
         }
         return result;

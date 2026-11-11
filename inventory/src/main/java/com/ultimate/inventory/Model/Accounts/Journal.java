@@ -2,7 +2,9 @@ package com.ultimate.inventory.Model.Accounts;
 
 import com.ultimate.inventory.Constants.JournalStatus;
 import com.ultimate.inventory.Constants.JournalTransactionType;
+import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.Model;
+import com.ultimate.inventory.Model.Shop;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,11 +17,13 @@ import java.time.LocalDateTime;
 @Table(name = "journal")
 public class Journal extends Model {
 
-    @Column(name = "business_id", nullable = false)
-    private Long businessId;
+    @ManyToOne
+    @JoinColumn(name = "business_id", nullable = false)
+    private Business business;
 
-    @Column(name = "shop_id")
-    private Long shopId;
+    @ManyToOne
+    @JoinColumn(name = "shop_id")
+    private Shop shop;
 
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
@@ -40,5 +44,4 @@ public class Journal extends Model {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private JournalStatus status;
-
 }

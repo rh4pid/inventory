@@ -8,8 +8,10 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +26,17 @@ import java.util.Optional;
 public class Security {
     private static final BCryptPasswordEncoder hasher = new BCryptPasswordEncoder();
     private static final SecureRandom random = new SecureRandom();
+    private static final long ACCESS_TOKEN_EXP = 15 * 60 * 1000; // 15 min
 
-    private static final String SECRET = "web-programming-tutorials-web-programming-tutorials";
-    private static final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
-    private static final long ACCESS_TOKEN_EXP = 20 * 60 * 1000; // 20 min
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    private Key key;
+
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
 
     @Autowired
     private UserRepository userRepo;
@@ -63,13 +72,7 @@ public class Security {
     public ResponseDTO decodeAccessToken(String token) {
         ResponseDTO response = new ResponseDTO();
 
-        System.out.println("Token " + token);
         try {
-            System.out.println("decoded without key " + Jwts.claims().get("email", String.class));
-            System.out.println("KEY" + key);
-
-            System.out.println("Authorization2 " + key);
-
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build()
                     .parseClaimsJws(token)
                     .getBody();
@@ -105,14 +108,12 @@ public class Security {
 
     public ResponseDTO retrieveAccessToken(HttpServletRequest httpRequest) {
         String authorizationHeader = httpRequest.getHeader("Authorization");
-        System.out.println("Authorization " + authorizationHeader);
         if (authorizationHeader == null || authorizationHeader.isEmpty()) {
             ResponseDTO response = new ResponseDTO();
             response.setStatus(false);
             response.setMessage("No Authorization");
             return response;
         }
-        System.out.println("Authorization1 " + authorizationHeader);
         return decodeAccessToken(authorizationHeader.split(" ")[1]);
     }
 

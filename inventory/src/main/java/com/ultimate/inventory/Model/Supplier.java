@@ -31,4 +31,6 @@ public class Supplier extends Model {
 
     @Column(name = "telephone_secondary")
     private String telephoneSecondary;
+
+    private Boolean deleted = false;
 }

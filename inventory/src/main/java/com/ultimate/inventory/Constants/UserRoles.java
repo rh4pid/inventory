@@ -2,5 +2,10 @@ package com.ultimate.inventory.Constants;
 
 public enum UserRoles {
     OWNER,
-    SHOPKEEP
+    ADMIN,
+    MANAGER,
+    CASHIER,
+    STAFF,
+    DRIVER,
+    SHOPKEEP   // kept for backward compatibility
 }

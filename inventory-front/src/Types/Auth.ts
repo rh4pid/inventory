@@ -1,4 +1,4 @@
-import { UserRole } from "@/constants/Strings";
+import type { UserRole } from "@/Types";
 
 export type ApiResponse<T> = {
   data: T;

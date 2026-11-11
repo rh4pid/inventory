@@ -1,125 +1,57 @@
 "use client";
-import { useContext, createContext, useState, useEffect } from "react";
-import {
-  AuthContextType,
-  LoginPayload,
-  LoginResponse,
-  RegisterPayload,
-  UserData,
-} from "@/Types/Auth";
-import { apiRequest } from "@/utils/functions";
-import { defaultBaseUrl, urls } from "@/constants/Strings";
-import { useRouter } from "next/navigation";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { auth, setToken } from "@/lib/api";
+import type { User, LoginPayload } from "@/Types";
+
+interface AuthContextType {
+  user: User | null;
+  accessToken: string | null;
+  loading: boolean;
+  login: (data: LoginPayload) => Promise<void>;
+  logout: () => Promise<void>;
+}
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const router = useRouter();
-  const [userData, setUserData] = useState<UserData | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [message, setMessage] = useState<string>("");
-  const [isLoading, setLoading] = useState<boolean>(true);
-  const [isAuthenticated, setAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    refreshToken();
-  }, [accessToken]);
+    auth.refresh()
+      .then(({ accessToken: t, user: u }) => {
+        setToken(t);
+        setAccessToken(t);
+        setUser(u);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  const refreshToken = async () => {
-    try {
-      const responseRefresh = await apiRequest<LoginResponse>(
-        `${defaultBaseUrl}/${urls.refresh.url}`,
-        `${urls.refresh.meth}`,
-      );
+  const login = useCallback(async (data: LoginPayload) => {
+    const { accessToken: t, user: u } = await auth.login(data);
+    setToken(t);
+    setAccessToken(t);
+    setUser(u);
+  }, []);
 
-      if (!responseRefresh.success) {
-        console.log("REFRESH ERROR");
-        return;
-      }
-
-      setAccessToken(responseRefresh.data.accessToken);
-      setUserData(responseRefresh.data.user);
-    } catch (error: any) {
-      setAccessToken(null);
-      setUserData(null);
-      console.log("fetching user details  failed:", error.message);
-    }
-  };
-
-  const login = async (data: LoginPayload) => {
-    try {
-      const responseLogin = await apiRequest<LoginResponse>(
-        `${defaultBaseUrl}/${urls.login.url}`,
-        `${urls.login.meth}`,
-        data,
-      );
-
-      if (!responseLogin.success) {
-        //return to the login page and send an alert
-        setMessage("Check credentials");
-        router.push("/pages");
-        return;
-      }
-
-      setAccessToken(responseLogin.data.accessToken);
-      setUserData(responseLogin.data.user);
-      router.push("/pages");
-    } catch (error: any) {
-      setAccessToken(null);
-      setUserData(null);
-      console.log("Login failed:", error.message);
-      //toast.error("Login failed")
-    }
-  };
-
-  const register = async (data: RegisterPayload) => {
-    try {
-      const responseRegister = await apiRequest<string>(
-        `${defaultBaseUrl}/${urls.register.url}`,
-        `${urls.register.meth}`,
-        data,
-      );
-
-      if (!responseRegister.success) {
-        setMessage("Check credentials");
-      }
-
-      setMessage(responseRegister.data);
-    } catch (error: any) {
-      setAccessToken(null);
-      setUserData(null);
-      console.log("registration failed:", error.message);
-      //toast.error("Login failed");
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const responseLogout = await apiRequest<string>(
-        `${defaultBaseUrl}/${urls.logout.url}`,
-        `${urls.logout.meth}`,
-      );
-
-      if (!responseLogout.success) {
-        console.log("REFRESH ERROR");
-        return;
-      }
-
-      setAccessToken(null);
-      setUserData(null);
-      setMessage(responseLogout.data);
-    } catch (error: any) {
-      setAccessToken(null);
-      setUserData(null);
-      console.log("fetching user details  failed:", error.message);
-    }
-  };
+  const logout = useCallback(async () => {
+    await auth.logout().catch(() => {});
+    setToken(null);
+    setAccessToken(null);
+    setUser(null);
+  }, []);
 
   return (
-    <AuthContext.Provider
-      value={{ userData, isLoading, isAuthenticated, login, register, logout }}
-    >
+    <AuthContext.Provider value={{ user, accessToken, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}

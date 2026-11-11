@@ -13,11 +13,13 @@ import java.math.BigDecimal;
 @Table(name = "journal_entry")
 public class JournalEntry extends Model {
 
-    @Column(name = "journal_id", nullable = false)
-    private Long journalId;
+    @ManyToOne
+    @JoinColumn(name = "journal_id", nullable = false)
+    private Journal journal;
 
-    @Column(name = "account_id", nullable = false)
-    private Long accountId;
+    @ManyToOne
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal debit = BigDecimal.ZERO;

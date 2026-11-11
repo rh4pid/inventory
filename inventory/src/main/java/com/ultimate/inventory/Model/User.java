@@ -1,6 +1,5 @@
 package com.ultimate.inventory.Model;
 
-import com.ultimate.inventory.Constants.UserRoles;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +20,8 @@ public class User extends Model {
     private String lastName;
     @Column(unique = true, nullable = false)
     private String email;
+    @Column(unique = true)
+    private String username;
     @Column(name = "telephone_primary")
     private String telephonePrimary;
     @Column(name = "telephone_secondary")
