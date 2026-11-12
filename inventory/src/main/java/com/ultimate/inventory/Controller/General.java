@@ -48,9 +48,10 @@ public class General {
     public ResponseEntity<?> getShops(@PathVariable Long businessId,
                                       @AuthenticationPrincipal String email,
                                       @RequestParam(defaultValue = "0") int page,
-                                      @RequestParam(defaultValue = "10") int size) {
+                                      @RequestParam(defaultValue = "10") int size,
+                                      @RequestParam(defaultValue = "false") boolean mine) {
         return ResponseEntity.ok(shopService.getShopsByBusiness(businessId, email,
-                PageRequest.of(page, size, Sort.by("id").ascending())));
+                PageRequest.of(page, size, Sort.by("id").ascending()), mine));
     }
 
     @PutMapping("/shop/{shopId}")
@@ -72,8 +73,9 @@ public class General {
 
     @PostMapping("/shopkeep/{businessId}")
     public ResponseEntity<?> addStaff(@RequestBody @Validated ShopKeepDTO dto,
-                                      @PathVariable Long businessId) {
-        staffService.addStaff(dto, businessId);
+                                      @PathVariable Long businessId,
+                                      @AuthenticationPrincipal String email) {
+        staffService.addStaff(dto, businessId, email);
         return ResponseEntity.ok(new ResponseDTO(true, "Staff added successfully"));
     }
 
@@ -86,8 +88,9 @@ public class General {
     }
 
     @GetMapping("/shopkeep/{businessUserId}")
-    public ResponseEntity<?> getStaff(@PathVariable Long businessUserId) {
-        return ResponseEntity.ok(staffService.getStaff(businessUserId));
+    public ResponseEntity<?> getStaff(@PathVariable Long businessUserId,
+                                      @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(staffService.getStaff(businessUserId, email));
     }
 
     @GetMapping("/business/{businessId}/shopkeeps")
@@ -101,14 +104,16 @@ public class General {
 
     @PutMapping("/shopkeep/{shopUserId}")
     public ResponseEntity<?> updateStaff(@PathVariable Long shopUserId,
-                                         @RequestBody @Validated ShopKeepDTO dto) {
-        staffService.updateStaff(shopUserId, dto);
+                                         @RequestBody @Validated ShopKeepDTO dto,
+                                         @AuthenticationPrincipal String email) {
+        staffService.updateStaff(shopUserId, dto, email);
         return ResponseEntity.ok(new ResponseDTO(true, "Staff updated successfully"));
     }
 
     @DeleteMapping("/shopkeep/{shopUserId}")
-    public ResponseEntity<?> removeStaff(@PathVariable Long shopUserId) {
-        staffService.removeStaff(shopUserId);
+    public ResponseEntity<?> removeStaff(@PathVariable Long shopUserId,
+                                         @AuthenticationPrincipal String email) {
+        staffService.removeStaff(shopUserId, email);
         return ResponseEntity.ok(new ResponseDTO(true, "Staff removed successfully"));
     }
 }

@@ -34,6 +34,8 @@ interface Props {
   businessId: number;
   products: Product[];
   shops: Shop[];
+  /** Where a transfer may go; defaults to {@link shops}. */
+  destinations?: Shop[];
   suppliers: Supplier[];
   preset?: StockActionPreset;
   /** Feature switches from Settings → Features. */
@@ -49,7 +51,7 @@ interface Props {
  * opens, so state starts fresh from `preset`.
  */
 export function StockActionDialog({
-  action, onClose, onDone, businessId, products, shops, suppliers, preset,
+  action, onClose, onDone, businessId, products, shops, destinations, suppliers, preset,
   multipleUnits, trackBatches, trackExpiry, needsApproval,
 }: Props) {
   const [productId, setProductId] = useState(preset?.productId ? String(preset.productId) : "");
@@ -206,7 +208,7 @@ export function StockActionDialog({
                 <Select value={toShopId} onValueChange={setToShopId}>
                   <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
                   <SelectContent>
-                    {shops.filter((s) => String(s.id) !== shopId).map((s) => (
+                    {(destinations ?? shops).filter((s) => String(s.id) !== shopId).map((s) => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.shopName}</SelectItem>
                     ))}
                   </SelectContent>

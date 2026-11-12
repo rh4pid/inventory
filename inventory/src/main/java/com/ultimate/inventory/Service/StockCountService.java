@@ -57,15 +57,17 @@ public class StockCountService {
     }
 
     public List<StockCount> list(Long businessId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
-        return countRepo.findByBusinessOrderByCreatedAtDesc(accessHelper.requireBusiness(businessId));
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        Set<Long> allowed = accessHelper.allowedShopIds(member);
+        return countRepo.findByBusinessOrderByCreatedAtDesc(accessHelper.requireBusiness(businessId)).stream()
+                .filter(c -> allowed == null || allowed.contains(c.getShop().getId())).toList();
     }
 
     @Transactional
     public CountView start(Long businessId, Long shopId, String notes, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(shopId, businessId);
+        Shop shop = accessHelper.requireShopAccess(shopId, businessId, member);
         if (countRepo.existsByShopAndStatusIn(shop, ACTIVE)) {
             throw new AppException(HttpStatus.CONFLICT, "A count is already in progress at " + shop.getShopName());
         }
@@ -89,14 +91,14 @@ public class StockCountService {
 
     public CountView get(Long businessId, Long countId, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
-        return view(requireCount(businessId, countId), member);
+        return view(requireCount(businessId, countId, member), member);
     }
 
     /** Adds a product that is physically present but has no stock line here yet. */
     @Transactional
     public CountView addProduct(Long businessId, Long countId, Long productId, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
-        StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN);
+        StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN, member);
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, c.getBusiness())
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Product not found"));
         if (lineRepo.existsByStockCountAndProduct(c, product)) {
@@ -111,7 +113,7 @@ public class StockCountService {
     @Transactional
     public CountView saveCounts(Long businessId, Long countId, List<LineEntry> entries, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
-        StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN);
+        StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN, member);
         Map<Long, StockCountLine> lines = new HashMap<>();
         lineRepo.findByStockCountOrderByIdAsc(c).forEach(l -> lines.put(l.getId(), l));
         for (LineEntry e : entries) {
@@ -135,7 +137,7 @@ public class StockCountService {
     @Transactional
     public CountView complete(Long businessId, Long countId, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
-        StockCount c = requireCount(businessId, countId);
+        StockCount c = requireCount(businessId, countId, member);
         if (c.getStatus() != StockCountStatus.OPEN && c.getStatus() != StockCountStatus.SUBMITTED) {
             throw new AppException(HttpStatus.CONFLICT, "This count is already " + c.getStatus().name().toLowerCase());
         }
@@ -178,7 +180,7 @@ public class StockCountService {
     public CountView reopen(Long businessId, Long countId, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         if (!InventoryService.isManager(member)) throw new AppException(HttpStatus.FORBIDDEN, "Insufficient permissions");
-        StockCount c = requireStatus(businessId, countId, StockCountStatus.SUBMITTED);
+        StockCount c = requireStatus(businessId, countId, StockCountStatus.SUBMITTED, member);
         c.setStatus(StockCountStatus.OPEN);
         return view(countRepo.save(c), member);
     }
@@ -186,7 +188,7 @@ public class StockCountService {
     @Transactional
     public CountView cancel(Long businessId, Long countId, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
-        StockCount c = requireCount(businessId, countId);
+        StockCount c = requireCount(businessId, countId, member);
         if (!ACTIVE.contains(c.getStatus())) {
             throw new AppException(HttpStatus.CONFLICT, "This count is already " + c.getStatus().name().toLowerCase());
         }
@@ -233,13 +235,19 @@ public class StockCountService {
         return new CountView(c, blind, canPost, lines, counted, lines.size());
     }
 
-    private StockCount requireCount(Long businessId, Long countId) {
-        return countRepo.findByIdAndBusiness(countId, accessHelper.requireBusiness(businessId))
+    /** The count, if it belongs to the business and is at a location this member works at. */
+    private StockCount requireCount(Long businessId, Long countId, BusinessUser member) {
+        StockCount c = countRepo.findByIdAndBusiness(countId, accessHelper.requireBusiness(businessId))
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Stock count not found"));
+        if (!accessHelper.canUseShop(member, c.getShop())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Stock count not found");
+        }
+        return c;
     }
 
-    private StockCount requireStatus(Long businessId, Long countId, StockCountStatus status) {
-        StockCount c = requireCount(businessId, countId);
+    private StockCount requireStatus(Long businessId, Long countId, StockCountStatus status,
+                                     BusinessUser member) {
+        StockCount c = requireCount(businessId, countId, member);
         if (c.getStatus() != status) {
             throw new AppException(HttpStatus.CONFLICT, "This count is " + c.getStatus().name().toLowerCase());
         }

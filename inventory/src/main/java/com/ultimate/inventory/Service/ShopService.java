@@ -126,15 +126,18 @@ public class ShopService {
         return shop;
     }
 
-    public Page<Shop> getShopsByBusiness(Long businessId, String userEmail, Pageable pageable) {
-        Business business = businessRepo.findById(businessId)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Business not found"));
-
-        User user = userRepo.findByEmail(userEmail);
-        if (businessUserRepo.findByBusinessAndUser(business, user) == null) {
-            throw new AppException(HttpStatus.FORBIDDEN, "You do not belong to this business");
+    /**
+     * Locations of the business. With {@code mine}, only those the caller can work at: every
+     * location for managers, the assigned ones for other staff.
+     */
+    public Page<Shop> getShopsByBusiness(Long businessId, String userEmail, Pageable pageable, boolean mine) {
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        Business business = accessHelper.requireBusiness(businessId);
+        java.util.Set<Long> allowed = mine ? accessHelper.allowedShopIds(member) : null;
+        if (allowed != null) {
+            if (allowed.isEmpty()) return Page.empty(pageable);
+            return shopRepo.findActiveByBusinessAndIdIn(business, allowed, pageable);
         }
-
         return shopRepo.findActiveByBusiness(business, pageable);
     }
 

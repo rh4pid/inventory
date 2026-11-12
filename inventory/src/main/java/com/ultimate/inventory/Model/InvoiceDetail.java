@@ -35,6 +35,10 @@ public class InvoiceDetail extends Model {
     @Column(name = "batch_info", length = 500)
     private String batchInfo;
 
+    /** How much of {@link #quantity} (same unit) has been returned so far. */
+    @Column(name = "returned_quantity")
+    private Double returnedQuantity = 0.0;
+
     @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
 

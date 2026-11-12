@@ -24,10 +24,12 @@ public class ProductService {
     private final UnitRepository unitRepo;
     private final TaxRateRepository taxRateRepo;
     private final BusinessAccessHelper accessHelper;
+    private final InventoryRepository inventoryRepo;
 
     public ProductService(ProductRepository productRepo, CategoryRepository categoryRepo,
                           UnitRepository unitRepo, TaxRateRepository taxRateRepo,
-                          BusinessAccessHelper accessHelper) {
+                          BusinessAccessHelper accessHelper, InventoryRepository inventoryRepo) {
+        this.inventoryRepo = inventoryRepo;
         this.productRepo = productRepo;
         this.categoryRepo = categoryRepo;
         this.unitRepo = unitRepo;
@@ -96,10 +98,20 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long businessId, Long productId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireManager(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Product not found"));
+        // Deleting hides the product everywhere, so its stock would silently vanish from the books.
+        String holding = inventoryRepo.findByProduct(product).stream()
+                .filter(i -> Math.abs(i.getQuantity()) > 1e-9)
+                .map(i -> InventoryService.fmt(i.getQuantity()) + " at " + i.getShop().getShopName())
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (!holding.isEmpty()) {
+            throw new AppException(HttpStatus.CONFLICT, "Cannot delete '" + product.getProductName() +
+                    "' while it still has stock (" + holding + "). Write the stock off, transfer it, " +
+                    "or count it to zero first.");
+        }
         product.setDeleted(true);
         product.setUpdatedBy(userEmail);
         product.setUpdatedAt(new Date());

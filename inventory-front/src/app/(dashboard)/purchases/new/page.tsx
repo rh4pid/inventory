@@ -46,7 +46,7 @@ export default function NewPurchasePage() {
     Promise.all([
       productsApi.list(id, { size: 100 }),
       suppliersApi.list(id, { size: 100 }),
-      shopsApi.list(id),
+      shopsApi.list(id, { mine: true }),
     ]).then(([p, s, sh]) => {
       setProds(p.content);
       setSuppliers(s.content);

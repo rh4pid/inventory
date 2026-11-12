@@ -35,7 +35,8 @@ export default function InventoryPage() {
   const [preset, setPreset] = useState<StockActionPreset | undefined>(undefined);
   const [prods, setProds] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);       // locations this user works at
+  const [allShops, setAllShops] = useState<Shop[]>([]); // every location (transfer destinations)
   const [activeShop, setActiveShop] = useState<string>("");
   const [view, setView] = useState<View>("stock");
   const [pendingApprovals, setPendingApprovals] = useState(0);
@@ -62,8 +63,9 @@ export default function InventoryPage() {
     if (!businessId) return;
     setLoading(true);
     try {
-      const [low, shopRes, prodRes, supRes, exp, pending] = await Promise.all([
+      const [low, shopRes, allShopRes, prodRes, supRes, exp, pending] = await Promise.all([
         invApi.lowStock(businessId),
+        shopsApi.list(businessId, { mine: true }),
         shopsApi.list(businessId),
         productsApi.list(businessId, { size: 200 }),
         suppliersApi.list(businessId, { size: 100 }),
@@ -72,6 +74,7 @@ export default function InventoryPage() {
       ]);
       setLowStock(low);
       setShops(shopRes.content);
+      setAllShops(allShopRes.content);
       setProds(prodRes.content);
       setSuppliers(supRes.content);
       setExpiring(exp);
@@ -358,6 +361,7 @@ export default function InventoryPage() {
           businessId={businessId}
           products={prods}
           shops={shops}
+          destinations={allShops}
           suppliers={suppliers}
           preset={preset}
           multipleUnits={Boolean(settings?.multipleUnits)}

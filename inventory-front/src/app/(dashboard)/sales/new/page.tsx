@@ -39,7 +39,7 @@ export default function NewSalePage() {
     Promise.all([
       productsApi.list(id, { size: 100 }),
       customersApi.list(id, { size: 100 }),
-      shopsApi.list(id),
+      shopsApi.list(id, { mine: true }),
     ]).then(([p, c, s]) => {
       setProds(p.content);
       setCustomers(c.content);

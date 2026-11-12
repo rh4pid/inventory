@@ -18,4 +18,8 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
 
     @Query("SELECT s FROM Shop s WHERE s.business = :business AND (s.deleted IS NULL OR s.deleted = false)")
     Page<Shop> findActiveByBusiness(@Param("business") Business business, Pageable pageable);
+
+    @Query("SELECT s FROM Shop s WHERE s.business = :business AND s.id IN :ids AND (s.deleted IS NULL OR s.deleted = false)")
+    Page<Shop> findActiveByBusinessAndIdIn(@Param("business") Business business,
+                                           @Param("ids") java.util.Collection<Long> ids, Pageable pageable);
 }

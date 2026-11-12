@@ -39,7 +39,6 @@ public class InventoryService {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
     private static final String OPENING = "Opening stock";
-    private static final Set<UserRoles> MANAGERS = EnumSet.of(UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
 
     /** How a quantity was entered by the user, kept on the movement for traceability. */
     public record Entered(Double quantity, String unit) {
@@ -109,9 +108,9 @@ public class InventoryService {
 
     @Transactional
     public Inventory stockIn(Long businessId, StockInDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);
         UnitService.Conversion c = unitService.resolve(product, dto.getUnitId());
         requireNotExpired(dto.getExpiryDate());
@@ -127,7 +126,7 @@ public class InventoryService {
     public ActionResult stockOut(Long businessId, StockOutDTO dto, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);
         UnitService.Conversion c = unitService.resolve(product, dto.getUnitId());
         if (dto.getBatchId() != null) batchService.requireBatch(dto.getBatchId(), product, shop);
@@ -154,12 +153,12 @@ public class InventoryService {
 
     @Transactional
     public Map<String, Inventory> transfer(Long businessId, StockTransferDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
         if (dto.getFromShopId().equals(dto.getToShopId())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Source and destination locations must be different");
         }
-        Shop fromShop = accessHelper.requireShopInBusiness(dto.getFromShopId(), businessId);
+        Shop fromShop = accessHelper.requireShopAccess(dto.getFromShopId(), businessId, member);
         Shop toShop = accessHelper.requireShopInBusiness(dto.getToShopId(), businessId);
         Product product = requireProductInBusiness(dto.getProductId(), business);
         UnitService.Conversion c = unitService.resolve(product, dto.getUnitId());
@@ -199,7 +198,7 @@ public class InventoryService {
     public ActionResult adjust(Long businessId, StockAdjustmentDTO dto, String userEmail) {
         BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);
         if (dto.getBatchId() != null && !tracksBatches(business)) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Batch tracking is not switched on");
@@ -230,24 +229,32 @@ public class InventoryService {
     // ── Queries ──────────────────────────────────────────────────────────────
 
     public Page<Inventory> listShopInventory(Long businessId, Long shopId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
-        Shop shop = accessHelper.requireShopInBusiness(shopId, businessId);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        Shop shop = accessHelper.requireShopAccess(shopId, businessId, member);
         return inventoryRepo.findByShop(shop, pageable);
     }
 
     public List<Inventory> getLowStock(Long businessId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        return inventoryRepo.findLowStockByBusiness(business);
+        Set<Long> allowed = accessHelper.allowedShopIds(member);
+        return inventoryRepo.findLowStockByBusiness(business).stream()
+                .filter(i -> allowed == null || allowed.contains(i.getShop().getId())).toList();
     }
 
     /** Stock movement history, newest first, optionally for one location and/or product. */
     public Page<StockMovement> listMovements(Long businessId, Long shopId, Long productId,
                                              String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = shopId != null ? accessHelper.requireShopInBusiness(shopId, businessId) : null;
+        Shop shop = shopId != null ? accessHelper.requireShopAccess(shopId, businessId, member) : null;
         Product product = productId != null ? requireProductInBusiness(productId, business) : null;
+        Set<Long> allowed = accessHelper.allowedShopIds(member);
+        if (shop == null && allowed != null) {
+            // Staff only see the history of the locations they work at.
+            if (allowed.isEmpty()) return Page.empty(pageable);
+            return movementRepo.searchInShops(business, allowed, product, pageable);
+        }
         return movementRepo.search(business, shop, product, pageable);
     }
 
@@ -255,9 +262,10 @@ public class InventoryService {
     @Transactional
     public List<BatchView> listBatches(Long businessId, Long shopId, Long productId,
                                        boolean includeEmpty, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = shopId != null ? accessHelper.requireShopInBusiness(shopId, businessId) : null;
+        Shop shop = shopId != null ? accessHelper.requireShopAccess(shopId, businessId, member) : null;
+        Set<Long> allowed = accessHelper.allowedShopIds(member);
         Product product = productId != null ? requireProductInBusiness(productId, business) : null;
         // Bring stock that predates batch tracking into "Opening stock" batches so the list adds up.
         if (shop != null && tracksBatches(business)) {
@@ -272,17 +280,20 @@ public class InventoryService {
         }
         int alertDays = alertDays(business);
         return batchRepo.search(business, shop, product, includeEmpty).stream()
+                .filter(b -> allowed == null || allowed.contains(b.getShop().getId()))
                 .map(b -> batchService.view(b, alertDays)).toList();
     }
 
     /** Batches already expired or expiring within {@code days} (default: the business alert window). */
     public List<BatchView> listExpiring(Long businessId, Long shopId, Integer days, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = shopId != null ? accessHelper.requireShopInBusiness(shopId, businessId) : null;
+        Shop shop = shopId != null ? accessHelper.requireShopAccess(shopId, businessId, member) : null;
+        Set<Long> allowed = accessHelper.allowedShopIds(member);
         int alertDays = alertDays(business);
         int window = days != null ? Math.max(0, days) : alertDays;
         return batchRepo.findExpiring(business, shop, LocalDate.now().plusDays(window)).stream()
+                .filter(b -> allowed == null || allowed.contains(b.getShop().getId()))
                 .map(b -> batchService.view(b, alertDays)).toList();
     }
 
@@ -510,7 +521,7 @@ public class InventoryService {
     }
 
     public static boolean isManager(BusinessUser member) {
-        return member != null && MANAGERS.contains(member.getRoles());
+        return BusinessAccessHelper.isManager(member);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

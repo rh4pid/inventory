@@ -35,7 +35,7 @@ export default function StockCountsPage() {
     try {
       const [counts, shopRes] = await Promise.all([
         countsApi.list(activeBusiness.businessId),
-        shopsApi.list(activeBusiness.businessId),
+        shopsApi.list(activeBusiness.businessId, { mine: true }),
       ]);
       setList(counts);
       setShops(shopRes.content);

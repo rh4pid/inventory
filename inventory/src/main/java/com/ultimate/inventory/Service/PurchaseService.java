@@ -49,9 +49,9 @@ public class PurchaseService {
 
     @Transactional
     public Invoice createPurchase(Long businessId, PurchaseDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
 
         Invoice invoice = new Invoice();
         invoice.setBusiness(business);
@@ -158,17 +158,25 @@ public class PurchaseService {
     }
 
     public Page<Invoice> listPurchases(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
+        java.util.Set<Long> allowed = accessHelper.allowedShopIds(member);
+        if (allowed != null) {
+            if (allowed.isEmpty()) return Page.empty(pageable);
+            return invoiceRepo.findByBusinessAndTypeAndShop_IdIn(business, InvoiceType.PURCHASE, allowed, pageable);
+        }
         return invoiceRepo.findByBusinessAndType(business, InvoiceType.PURCHASE, pageable);
     }
 
     public Invoice getPurchase(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));
         if (invoice.getType() != InvoiceType.PURCHASE) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
+        }
+        if (invoice.getShop() != null && !accessHelper.canUseShop(member, invoice.getShop())) {
             throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
         }
         return invoice;

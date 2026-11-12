@@ -34,14 +34,21 @@ public class StockRequestService {
         this.accessHelper = accessHelper;
     }
 
+    /** Requests at the locations this member works at (all of them for managers). */
     public List<StockRequest> list(Long businessId, StockRequestStatus status, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
-        return requestRepo.search(accessHelper.requireBusiness(businessId), status);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        java.util.Set<Long> allowed = accessHelper.allowedShopIds(member);
+        return requestRepo.search(accessHelper.requireBusiness(businessId), status).stream()
+                .filter(r -> allowed == null || allowed.contains(r.getShop().getId()))
+                .toList();
     }
 
     public long pendingCount(Long businessId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
-        return requestRepo.countByBusinessAndStatus(accessHelper.requireBusiness(businessId), StockRequestStatus.PENDING);
+        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        if (BusinessAccessHelper.isManager(member)) {
+            return requestRepo.countByBusinessAndStatus(accessHelper.requireBusiness(businessId), StockRequestStatus.PENDING);
+        }
+        return list(businessId, StockRequestStatus.PENDING, userEmail).size();
     }
 
     /** Applies the change. If stock has since run out, nothing changes and the request stays pending. */

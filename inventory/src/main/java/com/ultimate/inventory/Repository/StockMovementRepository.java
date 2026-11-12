@@ -30,4 +30,14 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
                                @Param("shop") Shop shop,
                                @Param("product") Product product,
                                Pageable pageable);
+
+    /** Movement history limited to a set of locations (what a staff member may see). */
+    @Query("SELECT m FROM StockMovement m WHERE m.shop.business = :business " +
+           "AND m.shop.id IN :shopIds " +
+           "AND (:product IS NULL OR m.product = :product) " +
+           "ORDER BY m.createdAt DESC, m.id DESC")
+    Page<StockMovement> searchInShops(@Param("business") Business business,
+                                      @Param("shopIds") java.util.Collection<Long> shopIds,
+                                      @Param("product") Product product,
+                                      Pageable pageable);
 }

@@ -15,5 +15,7 @@ import java.util.Optional;
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Page<Invoice> findByBusinessAndType(Business business, InvoiceType type, Pageable pageable);
     Page<Invoice> findByShopAndType(Shop shop, InvoiceType type, Pageable pageable);
+    Page<Invoice> findByBusinessAndTypeAndShop_IdIn(Business business, InvoiceType type,
+                                                    java.util.Collection<Long> shopIds, Pageable pageable);
     Optional<Invoice> findByIdAndBusiness(Long id, Business business);
 }

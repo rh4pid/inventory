@@ -28,6 +28,7 @@ public class DataSeeder implements CommandLineRunner {
     private final EmployeeRepository employeeRepo;
     private final AccountService accountService;
     private final Security security;
+    private final ShopUsersRepository shopUsersRepo;
 
     public DataSeeder(
             UserRepository userRepo, BusinessRepository businessRepo,
@@ -35,6 +36,7 @@ public class DataSeeder implements CommandLineRunner {
             CategoryRepository categoryRepo, ProductRepository productRepo,
             InventoryRepository inventoryRepo, SupplierRepository supplierRepo,
             CustomerRepository customerRepo, EmployeeRepository employeeRepo,
+            ShopUsersRepository shopUsersRepo,
             AccountService accountService, Security security) {
         this.userRepo = userRepo;
         this.businessRepo = businessRepo;
@@ -48,6 +50,7 @@ public class DataSeeder implements CommandLineRunner {
         this.employeeRepo = employeeRepo;
         this.accountService = accountService;
         this.security = security;
+        this.shopUsersRepo = shopUsersRepo;
     }
 
     @Override
@@ -93,11 +96,13 @@ public class DataSeeder implements CommandLineRunner {
         Business biz1 = makeBusiness("Demo Business", "contact@demobusiness.com", "+1 555 000 1234");
         addMember(biz1, owner,   UserRoles.OWNER);
         addMember(biz1, manager, UserRoles.MANAGER);
-        addMember(biz1, cashier, UserRoles.CASHIER);
+        BusinessUser cashierBiz1 = addMember(biz1, cashier, UserRoles.CASHIER);
 
         Shop shop1 = makeShop("Main Store", "123 High Street", biz1);
         Shop shop1b = makeShop("Warehouse", "45 Industrial Ave", biz1);
         shop1b.setLocationType(com.ultimate.inventory.Constants.LocationType.WAREHOUSE);
+        // Staff only work at the locations they are assigned to; the cashier works the Main Store.
+        assignToShop(cashierBiz1, shop1);
         shop1b = shopRepo.save(shop1b);
 
         Category elec   = makeCategory("Electronics", null, biz1);
@@ -157,9 +162,10 @@ public class DataSeeder implements CommandLineRunner {
         // owner is ADMIN here (not OWNER — different role)
         addMember(biz2, owner,   UserRoles.ADMIN);
         // cashier is CASHIER here too
-        addMember(biz2, cashier, UserRoles.CASHIER);
+        BusinessUser cashierBiz2 = addMember(biz2, cashier, UserRoles.CASHIER);
 
         Shop shop2 = makeShop("Downtown Branch", "77 Market Street", biz2);
+        assignToShop(cashierBiz2, shop2);
 
         Category pharma = makeCategory("Pharmaceuticals", null, biz2);
         Category beauty = makeCategory("Beauty & Personal Care", null, biz2);
@@ -231,6 +237,17 @@ public class DataSeeder implements CommandLineRunner {
         bu.setCreatedAt(new Date());
         bu.setCreatedBy("seeder");
         return businessUserRepo.save(bu);
+    }
+
+    private void assignToShop(BusinessUser member, Shop shop) {
+        com.ultimate.inventory.Model.ShopUsers su = new com.ultimate.inventory.Model.ShopUsers();
+        su.setBusinessUser(member);
+        su.setShop(shop);
+        su.setRoles(member.getRoles());
+        su.setDeleted(false);
+        su.setCreatedAt(new Date());
+        su.setCreatedBy("seeder");
+        shopUsersRepo.save(su);
     }
 
     private Shop makeShop(String name, String location, Business biz) {

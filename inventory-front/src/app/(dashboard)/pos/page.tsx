@@ -41,7 +41,7 @@ export default function POSPage() {
     setLoading(true);
     Promise.all([
       productsApi.list(bizId, { size: 200 }),
-      shopsApi.list(bizId),
+      shopsApi.list(bizId, { mine: true }),
     ]).then(([p, s]) => {
       setAllProducts(p.content);
       const shopList = s.content ?? (s as any);

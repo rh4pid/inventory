@@ -4,7 +4,7 @@ import type {
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
   Invoice, SalePayload, PurchasePayload, Payment, PaymentPayload,
-  Account, AccountPayload, PageResponse, Shop,
+  Account, AccountPayload, PageResponse, Shop, LocationStaff,
   Employee, EmployeePayload, BusinessUser,
   ShopPayload, Unit, ProductUnit, ProductUnitPayload, StockMovement, StockBatch,
   StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
@@ -70,8 +70,17 @@ export const users = {
 // ── Shops ────────────────────────────────────────────────────────────────────
 // Shops are stock locations of any kind (shop, warehouse, storeroom…).
 export const shops = {
-  list: (businessId: number, params?: { page?: number; size?: number }) =>
+  /** With mine: true, only the locations the current user works at (all of them for managers). */
+  list: (businessId: number, params?: { page?: number; size?: number; mine?: boolean }) =>
     req<PageResponse<Shop>>(`/general/business/${businessId}/shops${qs({ size: 100, ...params })}`),
+  staff: (businessId: number, shopId: number) =>
+    req<LocationStaff[]>(`/businesses/${businessId}/shops/${shopId}/staff`),
+  assignStaff: (businessId: number, shopId: number, businessUserId: number) =>
+    req<LocationStaff>(`/businesses/${businessId}/shops/${shopId}/staff`, {
+      method: "POST", body: JSON.stringify({ businessUserId }),
+    }),
+  unassignStaff: (businessId: number, shopId: number, assignmentId: number) =>
+    req<void>(`/businesses/${businessId}/shops/${shopId}/staff/${assignmentId}`, { method: "DELETE" }),
   create: (data: ShopPayload) =>
     req<unknown>(`/general/shop`, { method: "POST", body: JSON.stringify(data) }),
   update: (shopId: number, data: ShopPayload) =>

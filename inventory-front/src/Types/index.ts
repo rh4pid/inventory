@@ -496,3 +496,12 @@ export interface PageResponse<T> {
   first: boolean;
   last: boolean;
 }
+
+/** A staff member assigned to a location. Non-manager staff can only use their assigned locations. */
+export interface LocationStaff {
+  id: number;            // assignment id
+  businessUserId: number;
+  name: string;
+  email: string;
+  role: UserRole;
+}
