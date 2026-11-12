@@ -1,41 +1,33 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC = ["/login", "/register"];
+const PUBLIC = ["/login"];
 const REFRESH_COOKIE = "_ultimate_";
 
+/**
+ * Coarse guard on the session cookie; the backend checks every request properly.
+ * Public sign-up is closed: companies are created by the super admin, people by their admin.
+ */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasCookie = !!request.cookies.get(REFRESH_COOKIE);
 
+  if (pathname.startsWith("/register")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   if (PUBLIC.some((p) => pathname.startsWith(p))) {
-    if (hasCookie) {
-      return NextResponse.redirect(new URL("/overview", request.url));
-
-    }
-    return NextResponse.next();
+    // Signed in already: the app decides where to go (overview, or the admin console).
+    return hasCookie ? NextResponse.redirect(new URL("/", request.url)) : NextResponse.next();
   }
 
-  if (
-    pathname === "/" ||
-    pathname.startsWith("/overview") ||
-    pathname.startsWith("/products") ||
-    pathname.startsWith("/categories") ||
-    pathname.startsWith("/inventory") ||
-    pathname.startsWith("/sales") ||
-    pathname.startsWith("/purchases") ||
-    pathname.startsWith("/customers") ||
-    pathname.startsWith("/suppliers") ||
-    pathname.startsWith("/settings")
-  ) {
-    if (!hasCookie) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  if (!hasCookie) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
-
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Everything except Next internals and static files.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:png|jpg|jpeg|svg|webp|ico|txt)$).*)"],
 };

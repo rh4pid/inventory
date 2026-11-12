@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Generated on first start; holds the super admin sign-in. Never commit.
+SUPER_ADMIN_CREDENTIALS.txt

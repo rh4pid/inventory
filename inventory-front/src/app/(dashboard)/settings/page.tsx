@@ -1,12 +1,21 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, User, Bell, Building2, SlidersHorizontal, MapPin, Ruler } from "lucide-react";
+import { BookOpen, User, Bell, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound } from "lucide-react";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
-const SECTIONS = [
+const MANAGERS = ["OWNER", "ADMIN", "MANAGER"];
+
+const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; managersOnly?: boolean }[] = [
+  {
+    icon: UsersRound,
+    title: "Team",
+    description: "Create sign-ins for your people, set their roles and locations",
+    href: "/settings/team",
+    managersOnly: true,
+  },
   {
     icon: SlidersHorizontal,
     title: "Business Type & Features",
@@ -73,7 +82,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {SECTIONS.map((s) => (
+        {SECTIONS.filter((s) => !s.managersOnly || MANAGERS.includes(activeBusiness?.role ?? "")).map((s) => (
           <Link key={s.href} href={s.href}>
             <Card className="hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
               <CardContent className="flex items-center gap-4 p-5">

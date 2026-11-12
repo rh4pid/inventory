@@ -43,6 +43,15 @@ public class BusinessAccessHelper {
         return member != null && MANAGERS.contains(member.getRoles());
     }
 
+    /** The platform operator. Super admins manage companies; they are not members of them. */
+    public User requireSuperAdmin(String email) {
+        User user = requireUser(email);
+        if (!Boolean.TRUE.equals(user.getSuperAdmin())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Super admin only");
+        }
+        return user;
+    }
+
     public User requireUser(String email) {
         User user = userRepo.findByEmail(email);
         if (user == null) throw new AppException(HttpStatus.UNAUTHORIZED, "User not found");
@@ -59,7 +68,12 @@ public class BusinessAccessHelper {
         User user = requireUser(email);
         Business business = requireBusiness(businessId);
         BusinessUser bu = businessUserRepo.findByBusinessAndUser(business, user);
-        if (bu == null) throw new AppException(HttpStatus.FORBIDDEN, "You are not a member of this business");
+        if (bu == null || !bu.isActiveMember()) {
+            throw new AppException(HttpStatus.FORBIDDEN, "You are not a member of this business");
+        }
+        if (Boolean.TRUE.equals(business.getSuspended())) {
+            throw new AppException(HttpStatus.FORBIDDEN, business.getName() + " is suspended. Contact the system administrator.");
+        }
         return bu;
     }
 

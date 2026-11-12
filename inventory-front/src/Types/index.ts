@@ -9,6 +9,10 @@ export interface User {
   telephonePrimary?: string;
   telephoneSecondary?: string;
   profilePicture?: string;
+  /** Platform operator: manages companies and their admins (Admin console). */
+  superAdmin?: boolean;
+  /** Signed in with a temporary password someone else set; must choose their own first. */
+  mustChangePassword?: boolean;
 }
 
 export interface LoginPayload { email: string; password: string; }
@@ -72,6 +76,8 @@ export type BusinessType =
   | "WAREHOUSE" | "HARDWARE" | "RESTAURANT" | "OTHER";
 
 export interface BusinessSettings {
+  /** Who last saved the settings (audit field). */
+  updatedBy?: string;
   businessType: BusinessType;
   currencyCode: string;
   currencySymbol: string;
@@ -569,3 +575,37 @@ export interface DashboardData {
     stockStatus: "IN" | "LOW" | "OUT" | "DEAD"; demand: "HIGH" | "NORMAL" | "LOW";
   }[];
 }
+
+// ── Super admin & team ──────────────────────────────────────────────────────
+export interface CompanyAdmin {
+  membershipId: number; userId: number; name: string; email: string; phone?: string;
+  role: UserRole; pendingFirstSignIn: boolean;
+}
+
+export interface Company {
+  id: number; name: string; code: string; email?: string; contact?: string;
+  businessType?: string; businessTypeLabel?: string; suspended: boolean; createdAt?: string;
+  admins: CompanyAdmin[]; locations: number; members: number; products: number; lastActivity?: string;
+}
+
+export interface NewPerson { firstName: string; lastName: string; email: string; phone?: string }
+
+export interface CreateCompanyPayload {
+  name: string; email?: string; contact?: string; businessType?: string; admin: NewPerson;
+}
+
+/** A sign-in to hand over. temporaryPassword is null when the person already had an account. */
+export interface HandoverCredentials { name: string; email: string; temporaryPassword: string | null; existingAccount: boolean }
+
+export interface CompanyResult { company: Company; credentials: HandoverCredentials }
+
+export interface TeamMember {
+  id: number; userId: number; name: string; email: string; phone?: string; role: UserRole;
+  locations: { id: number; name: string }[]; pendingFirstSignIn: boolean; you: boolean; canManage: boolean;
+}
+
+export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[] }
+
+export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[] }
+
+export interface TeamAdded { member: TeamMember; temporaryPassword: string | null; existingAccount: boolean }

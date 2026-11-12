@@ -12,6 +12,7 @@ import { StockCard } from "@/components/dashboard/StockCard";
 import { OrderHistoryCard } from "@/components/dashboard/OrderHistoryCard";
 import { StockFlowCard } from "@/components/dashboard/StockFlowCard";
 import { ProductListCard } from "@/components/dashboard/ProductListCard";
+import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 import type { DashboardData, Invoice } from "@/Types";
 
 const PERIOD_PHRASE: Record<string, string> = {
@@ -74,6 +75,7 @@ export default function OverviewPage() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 xl:gap-5">
       <h1 className="sr-only">Overview · {locationName} · {PERIODS.find((p) => p.value === period)?.label}</h1>
+      <div className="md:col-span-2 xl:col-span-12 empty:hidden"><SetupChecklist hasStock={data.stock.products > 0} /></div>
       <div className="xl:col-span-4"><OrdersCard orders={data.orders} periodLabel={periodLabel} /></div>
       <div className="xl:col-span-4"><StockCard stock={data.stock} /></div>
       <div className="md:col-span-2 xl:col-span-4 xl:row-span-2">

@@ -29,7 +29,7 @@ function DialogContent({ className, children, ...props }: React.ComponentPropsWi
       <DialogPrimitive.Content
         className={cn(
           "fixed left-[50%] top-[50%] z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
-          "bg-surface rounded-3xl border border-line shadow-float p-6 max-h-[92dvh] overflow-y-auto w-[calc(100%-2rem)]",
+          "bg-surface rounded-3xl border border-line shadow-float p-6 max-h-[92dvh] overflow-y-auto w-[calc(100%-2rem)] focus:outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

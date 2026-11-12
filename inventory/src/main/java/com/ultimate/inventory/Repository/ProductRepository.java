@@ -13,6 +13,8 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByBusinessAndDeletedFalse(Business business, Pageable pageable);
+
+    long countByBusinessAndDeletedFalse(Business business);
     Optional<Product> findByIdAndBusinessAndDeletedFalse(Long id, Business business);
     Optional<Product> findByBusinessAndSku(Business business, String sku);
     Page<Product> findByBusinessAndProductNameContainingIgnoreCaseAndDeletedFalse(

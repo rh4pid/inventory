@@ -15,4 +15,6 @@ public interface BusinessUserRepo extends JpaRepository<BusinessUser, Long> {
     BusinessUser findByBusinessAndUser(Business business, User user);
     Page<BusinessUser> findByBusiness(Business business, Pageable pageable);
     List<BusinessUser> findByUser(User user);
+
+    List<BusinessUser> findAllByBusiness(Business business);
 }

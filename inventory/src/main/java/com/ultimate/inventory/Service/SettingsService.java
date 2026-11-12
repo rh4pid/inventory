@@ -71,6 +71,16 @@ public class SettingsService {
         });
     }
 
+    /** Sets a new company's business type with its feature preset (no access check: used by the super admin). */
+    @Transactional
+    public BusinessSettings applyBusinessType(Business business, BusinessType type, String by) {
+        BusinessSettings s = forBusiness(business);
+        if (type != null) s.applyPreset(type);
+        s.setUpdatedBy(by);
+        s.setUpdatedAt(new Date());
+        return settingsRepo.save(s);
+    }
+
     public boolean allowNegativeStock(Business business) {
         return Boolean.TRUE.equals(forBusiness(business).getAllowNegativeStock());
     }

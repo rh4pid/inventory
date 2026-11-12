@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { useAuth } from "@/context/AuthProvider";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
+import { ForcePasswordChange } from "@/components/account/ForcePasswordChange";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
@@ -14,10 +15,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
+    // The super admin manages companies from the admin console; they are not inside any company.
+    else if (!loading && user?.superAdmin) router.replace("/admin");
   }, [loading, user, router]);
 
   if (loading) return <PageLoader />;
-  if (!user) return null;
+  if (!user || user.superAdmin) return null;
+  if (user.mustChangePassword) return <ForcePasswordChange />;
 
   return (
     <WorkspaceProvider>

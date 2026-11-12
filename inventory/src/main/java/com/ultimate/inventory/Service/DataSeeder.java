@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.Date;
 
 @Component
+@org.springframework.core.annotation.Order(1)
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);

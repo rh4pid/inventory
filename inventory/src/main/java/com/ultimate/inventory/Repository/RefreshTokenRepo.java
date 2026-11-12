@@ -9,4 +9,8 @@ import java.util.List;
 
 public interface RefreshTokenRepo extends JpaRepository<RefreshTokens, Long> {
     RefreshTokens findAllByToken(String token);
+
+    /** Signs a user out everywhere (e.g. after an administrator resets their password). */
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByUser(com.ultimate.inventory.Model.User user);
 }

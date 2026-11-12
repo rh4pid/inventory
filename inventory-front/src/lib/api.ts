@@ -10,6 +10,7 @@ import type {
   StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
   InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
+  Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -66,6 +67,8 @@ export const users = {
   updateProfile: (data: Partial<User>) =>
     req<User>("/users/me", { method: "PUT", body: JSON.stringify(data) }),
   lookup: (q: string) => req<User>(`/users/lookup${qs({ q })}`),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    req<User>("/users/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
 };
 
 // ── Shops ────────────────────────────────────────────────────────────────────
@@ -330,4 +333,33 @@ export const dashboard = {
   /** Figures for one location (or all my locations) over a period. */
   get: (businessId: number, params?: { shopId?: number; period?: string }) =>
     req<DashboardData>(`/businesses/${businessId}/dashboard${qs(params)}`),
+};
+
+// ── Super admin console ──────────────────────────────────────────────────────
+export const admin = {
+  companies: () => req<Company[]>("/admin/companies"),
+  company: (id: number) => req<Company>(`/admin/companies/${id}`),
+  createCompany: (data: CreateCompanyPayload) =>
+    req<CompanyResult>("/admin/companies", { method: "POST", body: JSON.stringify(data) }),
+  updateCompany: (id: number, data: { name?: string; email?: string; contact?: string }) =>
+    req<Company>(`/admin/companies/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  suspend: (id: number) => req<Company>(`/admin/companies/${id}/suspend`, { method: "POST" }),
+  reactivate: (id: number) => req<Company>(`/admin/companies/${id}/reactivate`, { method: "POST" }),
+  addAdmin: (id: number, data: NewPerson) =>
+    req<CompanyResult>(`/admin/companies/${id}/admins`, { method: "POST", body: JSON.stringify(data) }),
+  resetAdminPassword: (id: number, membershipId: number) =>
+    req<CompanyResult>(`/admin/companies/${id}/admins/${membershipId}/reset-password`, { method: "POST" }),
+};
+
+// ── Team (a company's people) ────────────────────────────────────────────────
+export const team = {
+  list: (businessId: number) => req<TeamList>(`/businesses/${businessId}/team`),
+  add: (businessId: number, data: NewTeamMember) =>
+    req<TeamAdded>(`/businesses/${businessId}/team`, { method: "POST", body: JSON.stringify(data) }),
+  update: (businessId: number, memberId: number, data: { role?: UserRole; shopIds?: number[] }) =>
+    req<TeamMember>(`/businesses/${businessId}/team/${memberId}`, { method: "PUT", body: JSON.stringify(data) }),
+  resetPassword: (businessId: number, memberId: number) =>
+    req<TeamAdded>(`/businesses/${businessId}/team/${memberId}/reset-password`, { method: "POST" }),
+  remove: (businessId: number, memberId: number) =>
+    req<void>(`/businesses/${businessId}/team/${memberId}`, { method: "DELETE" }),
 };

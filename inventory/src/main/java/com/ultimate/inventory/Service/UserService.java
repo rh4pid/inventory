@@ -26,9 +26,32 @@ public class UserService {
     private final UserRepository userRepo;
     private final BusinessUserRepo businessUserRepo;
 
-    public UserService(UserRepository userRepo, BusinessUserRepo businessUserRepo) {
+    private final com.ultimate.inventory.utils.Security security;
+
+    public UserService(UserRepository userRepo, BusinessUserRepo businessUserRepo,
+                       com.ultimate.inventory.utils.Security security) {
+        this.security = security;
         this.userRepo = userRepo;
         this.businessUserRepo = businessUserRepo;
+    }
+
+    /** Sets a password the user chose; clears the "must change" flag left by a temporary password. */
+    @Transactional
+    public UserResponseDTO changePassword(String email, String currentPassword, String newPassword) {
+        User user = requireUser(email);
+        if (currentPassword == null || !security.isPassword(currentPassword, user.getPassword())) {
+            throw new com.ultimate.inventory.Exception.AppException(org.springframework.http.HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        UserAccounts.checkNewPassword(newPassword);
+        if (security.isPassword(newPassword, user.getPassword())) {
+            throw new com.ultimate.inventory.Exception.AppException(org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a password different from the current one");
+        }
+        user.setPassword(security.hashPassword(newPassword));
+        user.setMustChangePassword(false);
+        user.setUpdatedBy(email);
+        user.setUpdatedAt(new java.util.Date());
+        log.info("Password changed for {}", email);
+        return new UserResponseDTO(userRepo.save(user));
     }
 
     public UserResponseDTO getMyProfile(String email) {
@@ -68,6 +91,8 @@ public class UserService {
         List<BusinessUser> memberships = businessUserRepo.findByUser(user);
         return memberships.stream()
                 .filter(bu -> !Boolean.TRUE.equals(bu.getBusiness().getDeleted()))
+                .filter(BusinessUser::isActiveMember)
+                .filter(bu -> !Boolean.TRUE.equals(bu.getBusiness().getSuspended()))
                 .map(BusinessMembershipDTO::new)
                 .collect(Collectors.toList());
     }

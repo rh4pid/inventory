@@ -1,7 +1,6 @@
 "use client";
 import { LogoMark } from "@/components/layout/Logo";
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,8 +29,8 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await login(data);
-      router.push("/overview");
+      const u = await login(data);
+      router.push(u.superAdmin ? "/admin" : "/overview");
     } catch (err: any) {
       toast.error(err?.message ?? "Login failed");
     }
@@ -92,10 +91,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-sm text-gray-500">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-medium text-blue-600 hover:underline">
-            Create one
-          </Link>
+          No account yet? Your company administrator creates it for you.
         </p>
       </div>
     </div>
