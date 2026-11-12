@@ -8,6 +8,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { DashboardData } from "@/Types";
+import { useCan } from "@/lib/access";
 import { Panel, Monogram, fmtNum } from "./Panel";
 
 type Row = DashboardData["products"][number];
@@ -22,18 +23,21 @@ const DEMAND: Record<Row["demand"], { label: string; cls: string; hint: string }
 
 const STOCK: Record<Row["stockStatus"], string> = { IN: "In stock", LOW: "Low stock", OUT: "Out of stock", DEAD: "Dead stock" };
 
-function toCsv(rows: Row[]) {
+function toCsv(rows: Row[], withCosts: boolean) {
   const esc = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const head = ["Product", "SKU", "Supplier", "Category", "Cost", "On hand", "Unit", "On hand value", "Sold in period", "Stock", "Demand"];
-  const body = rows.map((r) => [r.productName, r.sku, r.supplier, r.category, r.cost, r.onHand, r.unit, r.onHandValue.toFixed(2), r.soldInPeriod, STOCK[r.stockStatus], DEMAND[r.demand].label]);
+  const head = ["Product", "SKU", "Supplier", "Category", ...(withCosts ? ["Cost"] : []), "On hand", "Unit", ...(withCosts ? ["On hand value"] : []), "Sold in period", "Stock", "Demand"];
+  const body = rows.map((r) => [r.productName, r.sku, r.supplier, r.category, ...(withCosts ? [r.cost] : []), r.onHand, r.unit,
+    ...(withCosts ? [(r.onHandValue ?? 0).toFixed(2)] : []), r.soldInPeriod, STOCK[r.stockStatus], DEMAND[r.demand].label]);
   return [head, ...body].map((line) => line.map(esc).join(",")).join("\n");
 }
 
 /** The product list from the sample: search, filters, value on hand and a demand badge per product. */
 export function ProductListCard({ rows, locationName }: { rows: Row[]; locationName: string }) {
+  const can = useCan();
+  const seeCosts = can("VIEW_COSTS");
   const [q, setQ] = useState("");
   const [category, setCategory] = useState(ALL);
   const [supplier, setSupplier] = useState(ALL);
@@ -56,11 +60,11 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
   const current = Math.min(page, pages - 1);
   const visible = filtered.slice(current * PAGE, current * PAGE + PAGE);
   const filtering = q || category !== ALL || supplier !== ALL || stock !== ALL;
-  const totalValue = filtered.reduce((s, r) => s + r.onHandValue, 0);
+  const totalValue = filtered.reduce((s, r) => s + (r.onHandValue ?? 0), 0);
 
   const reset = () => { setQ(""); setCategory(ALL); setSupplier(ALL); setStock(ALL); setPage(0); };
   const exportCsv = () => {
-    const blob = new Blob([toCsv(filtered)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([toCsv(filtered, seeCosts)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `products-${locationName.toLowerCase().replace(/\W+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -86,7 +90,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
         <div className="min-w-0 xl:mr-auto">
           <h2 className="text-xl font-semibold tracking-tight text-ink">Product list</h2>
           <p className="text-[13px] text-ink-3">
-            {fmtNum(filtered.length)} product{filtered.length === 1 ? "" : "s"} · {formatCurrency(totalValue)} on hand · {locationName}
+            {fmtNum(filtered.length)} product{filtered.length === 1 ? "" : "s"}{seeCosts ? ` · ${formatCurrency(totalValue)} on hand` : ""} · {locationName}
           </p>
         </div>
         <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -112,24 +116,24 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-line bg-surface text-ink-2 hover:text-ink disabled:opacity-40">
               <Download className="h-4 w-4" />
             </button>
-            <Link href="/products" aria-label="Add product" title="Add product"
+            {can("MANAGE_CATALOG") && <Link href="/products/new" aria-label="Add product" title="Add product"
               className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-[0_6px_16px_-8px_rgb(242_98_46/0.9)] hover:bg-accent-deep">
               <Plus className="h-5 w-5" />
-            </Link>
+            </Link>}
           </div>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[56rem] text-sm">
+        <table className={cn("w-full text-sm", seeCosts ? "min-w-[56rem]" : "min-w-[44rem]")}>
           <thead>
             <tr className="text-left text-[13px] text-ink-3">
               <th className="px-5 py-3 font-medium md:pl-6">Product</th>
               <th className="px-4 py-3 font-medium">Supplier</th>
               <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 text-right font-medium">Cost</th>
+              {seeCosts && <th className="px-4 py-3 text-right font-medium">Cost</th>}
               <th className="px-4 py-3 text-right font-medium">On hand</th>
-              <th className="px-4 py-3 text-right font-medium">On hand value</th>
+              {seeCosts && <th className="px-4 py-3 text-right font-medium">On hand value</th>}
               <th className="px-4 py-3 font-medium">Demand</th>
               <th className="px-5 py-3 text-right font-medium md:pr-6"><span className="sr-only">Actions</span></th>
             </tr>
@@ -148,7 +152,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
                 </td>
                 <td className="px-4 py-3 text-ink-2">{r.supplier ?? <span className="text-ink-3">—</span>}</td>
                 <td className="px-4 py-3 text-ink-2">{r.category ?? <span className="text-ink-3">—</span>}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-ink-2">{formatCurrency(r.cost)}</td>
+                {seeCosts && <td className="px-4 py-3 text-right tabular-nums text-ink-2">{formatCurrency(r.cost ?? 0)}</td>}
                 <td className="px-4 py-3 text-right tabular-nums">
                   <span className={cn("font-medium", r.stockStatus === "OUT" ? "text-accent-deep" : "text-ink")}>{fmtNum(r.onHand)}</span>
                   {r.unit && <span className="ml-1 text-xs text-ink-3">{r.unit}</span>}
@@ -156,7 +160,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
                     <div className="text-[11px] text-ink-3">{STOCK[r.stockStatus]}</div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-medium tabular-nums text-ink">{formatCurrency(r.onHandValue)}</td>
+                {seeCosts && <td className="px-4 py-3 text-right font-medium tabular-nums text-ink">{formatCurrency(r.onHandValue ?? 0)}</td>}
                 <td className="px-4 py-3">
                   <span className={cn("inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold", DEMAND[r.demand].cls)}
                     title={`${DEMAND[r.demand].hint} · ${fmtNum(r.soldInPeriod)} sold`}>
@@ -172,9 +176,9 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem asChild><Link href="/inventory">Adjust stock</Link></DropdownMenuItem>
-                      <DropdownMenuItem asChild><Link href="/pos">Sell at POS</Link></DropdownMenuItem>
-                      <DropdownMenuItem asChild><Link href={`/products?q=${encodeURIComponent(r.productName)}`}>Edit product</Link></DropdownMenuItem>
+                      <DropdownMenuItem asChild><Link href="/inventory">View stock</Link></DropdownMenuItem>
+                      {can("SELL") && <DropdownMenuItem asChild><Link href="/pos">Sell at POS</Link></DropdownMenuItem>}
+                      {can("MANAGE_CATALOG") && <DropdownMenuItem asChild><Link href={`/products?q=${encodeURIComponent(r.productName)}`}>Edit product</Link></DropdownMenuItem>}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>
@@ -182,7 +186,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-10 text-center text-sm text-ink-3">
+                <td colSpan={seeCosts ? 8 : 6} className="px-6 py-10 text-center text-sm text-ink-3">
                   {rows.length === 0 ? "No stock here yet. Receive stock or record a purchase to see products." : "No products match these filters."}
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.DTO.CustomerDTO;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.DTO.CustomerDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.Customer;
@@ -30,7 +31,7 @@ public class CustomerService {
 
     @Transactional
     public Customer createCustomer(Long businessId, CustomerDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CUSTOMERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Customer customer = new Customer();
@@ -45,13 +46,13 @@ public class CustomerService {
     }
 
     public Page<Customer> listCustomers(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CUSTOMERS, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         return customerRepo.findByBusinessAndDeletedFalse(business, pageable);
     }
 
     public Customer getCustomer(Long businessId, Long customerId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CUSTOMERS, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         return customerRepo.findByIdAndBusinessAndDeletedFalse(customerId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Customer not found"));
@@ -59,7 +60,7 @@ public class CustomerService {
 
     @Transactional
     public Customer updateCustomer(Long businessId, Long customerId, CustomerDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CUSTOMERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Customer customer = customerRepo.findByIdAndBusinessAndDeletedFalse(customerId, business)
@@ -73,7 +74,7 @@ public class CustomerService {
 
     @Transactional
     public void deleteCustomer(Long businessId, Long customerId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.DELETE_CUSTOMERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Customer customer = customerRepo.findByIdAndBusinessAndDeletedFalse(customerId, business)

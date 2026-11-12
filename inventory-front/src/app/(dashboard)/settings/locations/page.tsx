@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { BusinessUser, LocationStaff, LocationType, Shop } from "@/Types";
+import { useCan } from "@/lib/access";
 
 const MANAGER_ROLES = ["OWNER", "ADMIN", "MANAGER"];
 
@@ -27,7 +28,7 @@ export default function LocationsSettingsPage() {
   const [address, setAddress] = useState("");
   const [type, setType] = useState<LocationType>("SHOP");
   const [saving, setSaving] = useState(false);
-  const canEdit = MANAGER_ROLES.includes(activeBusiness?.role ?? "");
+  const canEdit = useCan()("MANAGE_LOCATIONS");
   const [staffFor, setStaffFor] = useState<Shop | null>(null);
 
   const load = useCallback(async () => {

@@ -108,7 +108,7 @@ public class InvoiceAdjustmentService {
     @Transactional
     public InvoiceView returnItems(Long businessId, Long invoiceId, InvoiceType type, ReturnRequest req,
                                    String userEmail) {
-        accessHelper.requireManager(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, com.ultimate.inventory.Constants.Capability.RETURNS_AND_VOIDS);
         Invoice invoice = requireInvoice(businessId, invoiceId, type, userEmail);
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
             throw new AppException(HttpStatus.CONFLICT, "This invoice is void");
@@ -205,7 +205,7 @@ public class InvoiceAdjustmentService {
     @Transactional
     public Invoice voidInvoice(Long businessId, Long invoiceId, InvoiceType type, PaymentMethod refundMethod,
                                String userEmail) {
-        accessHelper.requireManager(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, com.ultimate.inventory.Constants.Capability.RETURNS_AND_VOIDS);
         Invoice invoice = requireInvoice(businessId, invoiceId, type, userEmail);
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
             throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
@@ -272,7 +272,9 @@ public class InvoiceAdjustmentService {
     }
 
     private Invoice requireInvoice(Long businessId, Long invoiceId, InvoiceType type, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        // Sales are for sellers, purchases for whoever receives stock.
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail,
+                type == InvoiceType.SALES ? com.ultimate.inventory.Constants.Capability.SELL : com.ultimate.inventory.Constants.Capability.RECEIVE);
         Business business = accessHelper.requireBusiness(businessId);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, business)
                 .filter(i -> i.getType() == type)

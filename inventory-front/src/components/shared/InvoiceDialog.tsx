@@ -12,6 +12,7 @@ import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/Stat
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PAYMENT_METHODS } from "@/constants/Strings";
 import type { Invoice, InvoiceDetailView, PaymentMethod } from "@/Types";
+import { useCan } from "@/lib/access";
 
 const MONEY_METHODS = PAYMENT_METHODS.filter((m) => m.value !== "CREDIT");
 const fmtQty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
@@ -32,7 +33,10 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
   const bizId = activeBusiness?.businessId ?? 0;
   const isSale = invoice.type === "SALES";
   const api = isSale ? salesApi : purchasesApi;
-  const isManager = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "");
+  const can = useCan();
+  const isManager = can("RETURNS_AND_VOIDS");
+  // Customers pay at the till; paying suppliers is for managers and admins.
+  const canTakePayment = can(isSale ? "SELL" : "PAY_SUPPLIERS");
 
   const [view, setView] = useState<InvoiceDetailView | null>(null);
   const [mode, setMode] = useState<Mode>("view");
@@ -291,7 +295,7 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
 
         {mode === "view" && (
           <div className="flex flex-wrap justify-end gap-2">
-            {!isVoid && due > 0 && (
+            {!isVoid && due > 0 && canTakePayment && (
               <Button size="sm" onClick={() => { setMethod("CASH"); setPayAmount(due.toFixed(2)); setMode("pay"); }}>
                 Record payment
               </Button>

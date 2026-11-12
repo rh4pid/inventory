@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.Constants.StockMovementType;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.Constants.StockMovementType;
 import com.ultimate.inventory.Constants.UserRoles;
 import com.ultimate.inventory.DTO.StockAdjustmentDTO;
 import com.ultimate.inventory.DTO.StockInDTO;
@@ -108,7 +109,7 @@ public class InventoryService {
 
     @Transactional
     public Inventory stockIn(Long businessId, StockInDTO dto, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.STOCK_IN);
         Business business = accessHelper.requireBusiness(businessId);
         Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);
@@ -124,7 +125,7 @@ public class InventoryService {
     /** Stock leaving without a sale (write-off, damage…). Needs approval for non-managers when switched on. */
     @Transactional
     public ActionResult stockOut(Long businessId, StockOutDTO dto, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.STOCK_OUT);
         Business business = accessHelper.requireBusiness(businessId);
         Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);
@@ -153,7 +154,7 @@ public class InventoryService {
 
     @Transactional
     public Map<String, Inventory> transfer(Long businessId, StockTransferDTO dto, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.TRANSFER);
         Business business = accessHelper.requireBusiness(businessId);
         if (dto.getFromShopId().equals(dto.getToShopId())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Source and destination locations must be different");
@@ -196,7 +197,7 @@ public class InventoryService {
     /** Sets stock to a counted quantity. Needs approval for non-managers when switched on. */
     @Transactional
     public ActionResult adjust(Long businessId, StockAdjustmentDTO dto, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.ADJUST);
         Business business = accessHelper.requireBusiness(businessId);
         Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
         Product product = requireProductInBusiness(dto.getProductId(), business);

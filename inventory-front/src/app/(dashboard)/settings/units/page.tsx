@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Unit } from "@/Types";
+import { useCan } from "@/lib/access";
 
 export default function UnitsSettingsPage() {
   const { activeBusiness } = useBusiness();
@@ -20,7 +21,7 @@ export default function UnitsSettingsPage() {
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [saving, setSaving] = useState(false);
-  const canEdit = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "");
+  const canEdit = useCan()("MANAGE_CATALOG");
 
   const load = useCallback(async () => {
     if (!activeBusiness) return;

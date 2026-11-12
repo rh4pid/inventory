@@ -40,6 +40,9 @@ public class PaymentService {
 
     @Transactional
     public Payment recordPayment(Long businessId, Long invoiceId, InvoiceType type, PaymentDTO dto, String userEmail) {
+        // Customers pay at the till (sellers); paying suppliers is for managers and admins.
+        accessHelper.requireCapability(businessId, userEmail, type == InvoiceType.SALES
+                ? com.ultimate.inventory.Constants.Capability.SELL : com.ultimate.inventory.Constants.Capability.PAY_SUPPLIERS);
         Invoice invoice = requireInvoice(businessId, invoiceId, type, userEmail);
 
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
@@ -94,7 +97,8 @@ public class PaymentService {
 
     /** The invoice, if it is of this type, in this business and at a location the caller works at. */
     private Invoice requireInvoice(Long businessId, Long invoiceId, InvoiceType type, String userEmail) {
-        com.ultimate.inventory.Model.BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        com.ultimate.inventory.Model.BusinessUser member = accessHelper.requireCapability(businessId, userEmail,
+                type == InvoiceType.SALES ? com.ultimate.inventory.Constants.Capability.SELL : com.ultimate.inventory.Constants.Capability.RECEIVE);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, accessHelper.requireBusiness(businessId))
                 .filter(i -> i.getType() == type)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));

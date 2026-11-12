@@ -65,7 +65,7 @@ export default function NewPurchasePage() {
       packs = await unitsApi.forProduct(activeBusiness.businessId, product.id).catch(() => []);
     }
     setLines((prev) => [...prev, {
-      product, quantity: 1, unitPrice: product.costPrice, unitId: "", packs, batchNumber: "", expiryDate: "",
+      product, quantity: 1, unitPrice: product.costPrice ?? 0, unitId: "", packs, batchNumber: "", expiryDate: "",
     }]);
     setSelProduct("");
   };
@@ -86,7 +86,7 @@ export default function NewPurchasePage() {
       if (l.product.id !== productId) return l;
       const pack = l.packs.find((p) => String(p.unit.id) === unitId);
       const factor = pack?.conversionFactor ?? 1;
-      return { ...l, unitId: pack ? unitId : "", unitPrice: Math.round(l.product.costPrice * factor * 100) / 100 };
+      return { ...l, unitId: pack ? unitId : "", unitPrice: Math.round((l.product.costPrice ?? 0) * factor * 100) / 100 };
     }));
   };
 

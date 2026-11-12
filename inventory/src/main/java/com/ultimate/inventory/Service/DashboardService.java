@@ -67,7 +67,11 @@ public class DashboardService {
                               BigDecimal total, String paymentMethod, Date createdAt, String shopName) {}
 
     public record ProductRow(Long productId, String productName, String sku, String category, String supplier,
-                             String unit, double cost, double onHand, double onHandValue, double soldInPeriod,
+                             String unit,
+                             @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class) Double cost,
+                             double onHand,
+                             @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class) Double onHandValue,
+                             double soldInPeriod,
                              String stockStatus, String demand) {}
 
     public record Dashboard(String period, int days, Long shopId, Orders orders, Stock stock,
@@ -189,6 +193,9 @@ public class DashboardService {
         // ── Latest orders (sales and purchases) ──
         List<RecentOrder> recent = new ArrayList<>();
         for (InvoiceType type : InvoiceType.values()) {
+            // Only the orders this person can open: sales for sellers, purchases for receivers.
+            if (!BusinessAccessHelper.can(member, type == InvoiceType.SALES ? com.ultimate.inventory.Constants.Capability.SELL
+                    : com.ultimate.inventory.Constants.Capability.RECEIVE)) continue;
             invoiceRepo.findByBusinessAndType(business, type,
                             PageRequest.of(0, 15, Sort.by(Sort.Direction.DESC, "id")))
                     .forEach(inv -> { if (inScope.test(inv.getShop())) recent.add(recentView(inv)); });
@@ -210,7 +217,7 @@ public class DashboardService {
                     p.getCategory() != null ? p.getCategory().getCategoryName() : null,
                     supplierOf.get(p.getId()), p.getUnit() != null ? p.getUnit().getName() : null,
                     cost, q, Math.max(q, 0) * cost, sold, status.get(p.getId()), demand);
-        }).sorted(Comparator.comparingDouble(ProductRow::onHandValue).reversed()).toList();
+        }).sorted(Comparator.comparingDouble((ProductRow r) -> r.onHandValue()).reversed()).toList();
 
         int attentionTotal = attention.size();
         return new Dashboard(days == 7 ? "week" : days == 90 ? "quarter" : days == 365 ? "year" : "month",

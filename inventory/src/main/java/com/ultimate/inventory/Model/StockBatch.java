@@ -46,6 +46,8 @@ public class StockBatch extends Model {
     private Date receivedAt;
 
     /** Cost per base unit for this lot. */
+    // Only owners, admins and managers see costs (see CostVisibility).
+    @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class)
     @Column(name = "unit_cost")
     private Double unitCost;
 

@@ -19,6 +19,7 @@ import { locationTypeLabel } from "@/constants/Inventory";
 import type { Product } from "@/Types";
 import { Wordmark, LogoMark } from "./Logo";
 import { NAV } from "./Sidebar";
+import { useCan } from "@/lib/access";
 
 const iconBtn =
   "relative flex h-11 w-11 items-center justify-center rounded-2xl border border-line bg-surface text-ink-2 " +
@@ -134,7 +135,7 @@ function Notifications() {
   const { activeBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
   const bizId = activeBusiness?.businessId;
-  const isManager = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "");
+  const isManager = useCan()("APPROVE");
   const [items, setItems] = useState<{ key: string; title: string; detail: string; href: string; tone: "orange" | "blue" }[]>([]);
 
   const load = useCallback(async () => {
@@ -216,6 +217,7 @@ function BusinessSwitcher() {
 /** Jump to a page or a product. */
 function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
+  const can = useCan();
   const { activeBusiness } = useBusiness();
   const [q, setQ] = useState("");
   const [products, setProducts] = useState<Product[] | null>(null);
@@ -235,7 +237,7 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
 
   const results = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const pages = [...NAV, { label: "Settings", href: "/settings" }]
+    const pages = [...NAV.filter((n) => can(n.need)), { label: "Settings", href: "/settings" }]
       .filter((n) => !term || n.label.toLowerCase().includes(term))
       .map((n) => ({ key: n.href, label: n.label, hint: "Page", href: n.href }));
     const prods = term
@@ -244,7 +246,7 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
           .map((p) => ({ key: `p${p.id}`, label: p.productName, hint: p.sku ? `Product · ${p.sku}` : "Product", href: `/products?q=${encodeURIComponent(p.productName)}` }))
       : [];
     return [...prods, ...pages].slice(0, 12);
-  }, [q, products]);
+  }, [q, products, can]);
 
   const go = (href: string) => { onClose(); router.push(href); };
 

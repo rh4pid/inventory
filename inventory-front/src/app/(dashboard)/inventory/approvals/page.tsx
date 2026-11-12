@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { StockRequest, StockRequestStatus } from "@/Types";
+import { useCan } from "@/lib/access";
 
 const STATUS_VARIANT: Record<StockRequestStatus, "warning" | "success" | "destructive" | "secondary"> = {
   PENDING: "warning", APPROVED: "success", REJECTED: "destructive", CANCELLED: "secondary",
@@ -24,7 +25,7 @@ export default function ApprovalsPage() {
   const [list, setList] = useState<StockRequest[] | null>(null);
   const [filter, setFilter] = useState<StockRequestStatus | "ALL">("PENDING");
   const [busyId, setBusyId] = useState<number | null>(null);
-  const isManager = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "");
+  const isManager = useCan()("APPROVE");
 
   const load = useCallback(async () => {
     if (!activeBusiness) return;

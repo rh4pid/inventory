@@ -1,6 +1,8 @@
 package com.ultimate.inventory.Service;
 
 import com.ultimate.inventory.Constants.UserRoles;
+import com.ultimate.inventory.Constants.Capability;
+import com.ultimate.inventory.utils.CostVisibility;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.BusinessUser;
@@ -74,7 +76,22 @@ public class BusinessAccessHelper {
         if (Boolean.TRUE.equals(business.getSuspended())) {
             throw new AppException(HttpStatus.FORBIDDEN, business.getName() + " is suspended. Contact the system administrator.");
         }
+        CostVisibility.set(Capability.has(bu.getRoles(), Capability.VIEW_COSTS));
         return bu;
+    }
+
+    /**
+     * The caller's membership, if their role allows any of {@code capabilities} (see {@link Capability}).
+     */
+    public BusinessUser requireCapability(Long businessId, String email, Capability... capabilities) {
+        BusinessUser bu = requireMembership(businessId, email);
+        Set<Capability> mine = Capability.of(bu.getRoles());
+        for (Capability c : capabilities) if (mine.contains(c)) return bu;
+        throw new AppException(HttpStatus.FORBIDDEN, "Your role (" + bu.getRoles().name().toLowerCase() + ") can't do this. Ask a manager.");
+    }
+
+    public static boolean can(BusinessUser member, Capability c) {
+        return member != null && Capability.has(member.getRoles(), c);
     }
 
     public BusinessUser requireRole(Long businessId, String email, UserRoles... roles) {

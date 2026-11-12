@@ -16,6 +16,8 @@ public class BusinessMembershipDTO {
     private String businessEmail;
     private String businessLogo;
     private UserRoles role;
+    /** What this role allows (drives the app's menus and buttons; the server checks the same list). */
+    private java.util.Set<com.ultimate.inventory.Constants.Capability> capabilities;
 
     public BusinessMembershipDTO(BusinessUser bu) {
         this.businessUserId = bu.getId();
@@ -25,5 +27,6 @@ public class BusinessMembershipDTO {
         this.businessEmail = bu.getBusiness().getBusinessEmail();
         this.businessLogo = bu.getBusiness().getBusinessLogo();
         this.role = bu.getRoles();
+        this.capabilities = com.ultimate.inventory.Constants.Capability.of(bu.getRoles());
     }
 }

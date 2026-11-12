@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useCan } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { customers as customersApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -29,6 +30,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function CustomersPage() {
+  const canDelete = useCan()("DELETE_CUSTOMERS");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
@@ -111,10 +113,10 @@ export default function CustomersPage() {
                   <TableCell className="text-sm text-gray-500">{c.phone ?? "—"}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(c.totalPurchases)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"
-                      onClick={() => setDeleteId(c.id)}>
+                    {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"
+                      onClick={() => setDeleteId(c.id)} aria-label={`Delete ${c.firstName}`}>
                       <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </Button>}
                   </TableCell>
                 </TableRow>
               ))}

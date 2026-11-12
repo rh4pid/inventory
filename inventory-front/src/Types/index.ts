@@ -29,6 +29,8 @@ export interface BusinessMembership {
   businessEmail?: string;
   businessLogo?: string;
   role: UserRole;
+  /** What this role allows; see lib/access.ts. */
+  capabilities?: string[];
 }
 
 export type LocationType = "SHOP" | "WAREHOUSE" | "STOREROOM" | "PHARMACY" | "VEHICLE" | "OTHER";
@@ -571,7 +573,8 @@ export interface DashboardData {
   }[];
   products: {
     productId: number; productName: string; sku?: string; category?: string; supplier?: string; unit?: string;
-    cost: number; onHand: number; onHandValue: number; soldInPeriod: number;
+    /** null for roles that may not see costs */
+    cost: number | null; onHand: number; onHandValue: number | null; soldInPeriod: number;
     stockStatus: "IN" | "LOW" | "OUT" | "DEAD"; demand: "HIGH" | "NORMAL" | "LOW";
   }[];
 }

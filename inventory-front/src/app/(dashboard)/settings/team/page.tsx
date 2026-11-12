@@ -22,12 +22,12 @@ import { CredentialsCard } from "@/components/account/CredentialsCard";
 import type { Shop, TeamAdded, TeamList, TeamMember, UserRole } from "@/Types";
 
 const ROLE: Record<string, { label: string; hint: string; everywhere: boolean }> = {
-  OWNER:   { label: "Owner",   hint: "Full control of the company", everywhere: true },
-  ADMIN:   { label: "Admin",   hint: "Sets up the company: team, locations, settings, everything", everywhere: true },
-  MANAGER: { label: "Manager", hint: "Runs day-to-day: stock, sales, approvals, front-line staff", everywhere: true },
-  CASHIER: { label: "Cashier", hint: "Sells at their locations", everywhere: false },
-  STAFF:   { label: "Staff",   hint: "Receives and counts stock at their locations", everywhere: false },
-  DRIVER:  { label: "Driver",  hint: "Moves stock between their locations", everywhere: false },
+  OWNER:   { label: "Owner",   hint: "Everything, including settings, accounts, payroll and admins", everywhere: true },
+  ADMIN:   { label: "Admin",   hint: "Everything, including settings, accounts, payroll and other admins", everywhere: true },
+  MANAGER: { label: "Manager", hint: "Day-to-day at every location: products and prices, stock, purchases, approvals, returns and voids, front-line staff. Not settings, accounts or payroll", everywhere: true },
+  CASHIER: { label: "Cashier", hint: "Sells and takes customer payments, adds and edits customers, asks for stock to be written off. Sees prices, not costs", everywhere: false },
+  STAFF:   { label: "Staff",   hint: "Receives deliveries, stock in, counts and transfers, asks for adjustments. Doesn't sell or see costs", everywhere: false },
+  DRIVER:  { label: "Driver",  hint: "Moves stock between their locations and sees stock levels there", everywhere: false },
   SHOPKEEP:{ label: "Shopkeeper", hint: "Legacy role", everywhere: false },
 };
 

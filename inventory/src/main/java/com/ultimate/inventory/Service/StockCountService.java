@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.Constants.StockCountStatus;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.Constants.StockCountStatus;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.*;
 import com.ultimate.inventory.Repository.*;
@@ -65,7 +66,7 @@ public class StockCountService {
 
     @Transactional
     public CountView start(Long businessId, Long shopId, String notes, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.COUNT);
         Business business = accessHelper.requireBusiness(businessId);
         Shop shop = accessHelper.requireShopAccess(shopId, businessId, member);
         if (countRepo.existsByShopAndStatusIn(shop, ACTIVE)) {
@@ -97,7 +98,7 @@ public class StockCountService {
     /** Adds a product that is physically present but has no stock line here yet. */
     @Transactional
     public CountView addProduct(Long businessId, Long countId, Long productId, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.COUNT);
         StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN, member);
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, c.getBusiness())
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Product not found"));
@@ -112,7 +113,7 @@ public class StockCountService {
     /** Saves counted quantities; null clears a line back to "not counted". */
     @Transactional
     public CountView saveCounts(Long businessId, Long countId, List<LineEntry> entries, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.COUNT);
         StockCount c = requireStatus(businessId, countId, StockCountStatus.OPEN, member);
         Map<Long, StockCountLine> lines = new HashMap<>();
         lineRepo.findByStockCountOrderByIdAsc(c).forEach(l -> lines.put(l.getId(), l));
@@ -136,7 +137,7 @@ public class StockCountService {
      */
     @Transactional
     public CountView complete(Long businessId, Long countId, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.COUNT);
         StockCount c = requireCount(businessId, countId, member);
         if (c.getStatus() != StockCountStatus.OPEN && c.getStatus() != StockCountStatus.SUBMITTED) {
             throw new AppException(HttpStatus.CONFLICT, "This count is already " + c.getStatus().name().toLowerCase());

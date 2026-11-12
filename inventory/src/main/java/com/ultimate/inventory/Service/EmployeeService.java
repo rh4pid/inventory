@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.Constants.UserRoles;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.Constants.UserRoles;
 import com.ultimate.inventory.DTO.EmployeeDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.Business;
@@ -36,7 +37,7 @@ public class EmployeeService {
 
     @Transactional
     public Employee createEmployee(Long businessId, EmployeeDTO dto, String userEmail) {
-        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_PAYROLL);
         Business business = accessHelper.requireBusiness(businessId);
 
         BusinessUser businessUser = businessUserRepo.findById(dto.getBusinessUserId())
@@ -63,13 +64,13 @@ public class EmployeeService {
     }
 
     public Page<Employee> listEmployees(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_PAYROLL);
         Business business = accessHelper.requireBusiness(businessId);
         return employeeRepo.findByBusinessUser_Business(business, pageable);
     }
 
     public Employee getEmployee(Long businessId, Long employeeId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_PAYROLL);
         Business business = accessHelper.requireBusiness(businessId);
         return employeeRepo.findByIdAndBusinessUser_Business(employeeId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Employee not found"));
@@ -77,7 +78,7 @@ public class EmployeeService {
 
     @Transactional
     public Employee updateEmployee(Long businessId, Long employeeId, EmployeeDTO dto, String userEmail) {
-        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_PAYROLL);
         Business business = accessHelper.requireBusiness(businessId);
 
         Employee employee = employeeRepo.findByIdAndBusinessUser_Business(employeeId, business)
@@ -97,7 +98,7 @@ public class EmployeeService {
 
     @Transactional
     public void terminateEmployee(Long businessId, Long employeeId, String userEmail) {
-        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_PAYROLL);
         Business business = accessHelper.requireBusiness(businessId);
 
         Employee employee = employeeRepo.findByIdAndBusinessUser_Business(employeeId, business)
@@ -111,7 +112,7 @@ public class EmployeeService {
     }
 
     public Page<BusinessUser> listStaff(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_TEAM);
         Business business = accessHelper.requireBusiness(businessId);
         return businessUserRepo.findByBusiness(business, pageable);
     }

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCan } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { products as productsApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -17,6 +18,9 @@ import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/Types";
 
 export default function ProductsPage() {
+  const can = useCan();
+  const canEdit = can("MANAGE_CATALOG");
+  const seeCosts = can("VIEW_COSTS");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
@@ -73,11 +77,11 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         description={`${total} items in catalog`}
-        action={
+        action={canEdit && (
           <Link href="/products/new">
             <Button><Plus className="h-4 w-4" /> Add Product</Button>
           </Link>
-        }
+        )}
       />
 
       <div className="mb-4 flex gap-3">
@@ -96,7 +100,7 @@ export default function ProductsPage() {
         <EmptyState
           title="No products yet"
           description="Add your first product to get started."
-          action={<Link href="/products/new"><Button>Add Product</Button></Link>}
+          action={canEdit && <Link href="/products/new"><Button>Add Product</Button></Link>}
         />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
@@ -106,7 +110,7 @@ export default function ProductsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Cost</TableHead>
+                {seeCosts && <TableHead>Cost</TableHead>}
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead className="w-20"></TableHead>
@@ -129,7 +133,7 @@ export default function ProductsPage() {
                       <Badge variant="secondary">{p.category.categoryName}</Badge>
                     ) : "—"}
                   </TableCell>
-                  <TableCell>{formatCurrency(p.costPrice)}</TableCell>
+                  {seeCosts && <TableCell>{formatCurrency(p.costPrice)}</TableCell>}
                   <TableCell className="font-medium">{formatCurrency(p.sellingPrice)}</TableCell>
                   <TableCell>
                     <span className={p.totalCount <= (p.reorderLevel ?? 0) && p.totalCount > 0
@@ -140,7 +144,7 @@ export default function ProductsPage() {
                     {p.unit && <span className="text-xs text-gray-400 ml-1">{p.unit.symbol}</span>}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    {canEdit && <div className="flex gap-1">
                       <Link href={`/products/${p.id}/edit`}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Pencil className="h-3.5 w-3.5" />
@@ -152,7 +156,7 @@ export default function ProductsPage() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    </div>
+                    </div>}
                   </TableCell>
                 </TableRow>
               ))}

@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { BusinessSettings, BusinessSettingsPayload, BusinessType, BusinessTypeOption } from "@/Types";
+import { useCan } from "@/lib/access";
 
 type FlagKey = "multipleUnits" | "trackBatches" | "trackExpiry" | "allowNegativeStock"
   | "requireAdjustmentApproval" | "lowStockAlerts";
@@ -55,7 +56,7 @@ export default function FeaturesSettingsPage() {
   const { settings, setSettings } = useBusinessSettings();
   const [types, setTypes] = useState<BusinessTypeOption[]>([]);
   const [saving, setSaving] = useState(false);
-  const canEdit = activeBusiness?.role === "OWNER" || activeBusiness?.role === "ADMIN";
+  const canEdit = useCan()("MANAGE_SETTINGS");
 
   useEffect(() => {
     settingsApi.businessTypes().then(setTypes).catch(() => {});

@@ -8,6 +8,7 @@ import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { accounts as accountsApi, products as productsApi, team as teamApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Panel } from "./Panel";
+import { useCan } from "@/lib/access";
 
 interface Step { key: string; title: string; hint: string; href: string; done: boolean }
 
@@ -20,7 +21,7 @@ export function SetupChecklist({ hasStock }: { hasStock: boolean }) {
   const { locations } = useWorkspace();
   const { settings } = useBusinessSettings();
   const bizId = activeBusiness?.businessId;
-  const isAdmin = ["OWNER", "ADMIN"].includes(activeBusiness?.role ?? "");
+  const isAdmin = useCan()("MANAGE_SETTINGS");
   const key = `setup-dismissed:${bizId}`;
   const [dismissed, setDismissed] = useState(true);
   const [facts, setFacts] = useState<{ teamEmails: string[]; products: number; accounts: number } | null>(null);

@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.DTO.SupplierDTO;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.DTO.SupplierDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.Supplier;
@@ -30,7 +31,7 @@ public class SupplierService {
 
     @Transactional
     public Supplier createSupplier(Long businessId, SupplierDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_SUPPLIERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Supplier supplier = new Supplier();
@@ -45,13 +46,13 @@ public class SupplierService {
     }
 
     public Page<Supplier> listSuppliers(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.RECEIVE, Capability.MANAGE_SUPPLIERS);
         Business business = accessHelper.requireBusiness(businessId);
         return supplierRepo.findByBusinessAndDeletedFalse(business, pageable);
     }
 
     public Supplier getSupplier(Long businessId, Long supplierId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.RECEIVE, Capability.MANAGE_SUPPLIERS);
         Business business = accessHelper.requireBusiness(businessId);
         return supplierRepo.findByIdAndBusinessAndDeletedFalse(supplierId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Supplier not found"));
@@ -59,7 +60,7 @@ public class SupplierService {
 
     @Transactional
     public Supplier updateSupplier(Long businessId, Long supplierId, SupplierDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_SUPPLIERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Supplier supplier = supplierRepo.findByIdAndBusinessAndDeletedFalse(supplierId, business)
@@ -73,7 +74,7 @@ public class SupplierService {
 
     @Transactional
     public void deleteSupplier(Long businessId, Long supplierId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_SUPPLIERS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Supplier supplier = supplierRepo.findByIdAndBusinessAndDeletedFalse(supplierId, business)

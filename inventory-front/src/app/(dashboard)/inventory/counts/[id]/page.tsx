@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Product, StockCountView } from "@/Types";
+import { useCan } from "@/lib/access";
 
 export default function StockCountPage() {
   const params = useParams<{ id: string }>();
@@ -26,7 +27,7 @@ export default function StockCountPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [addId, setAddId] = useState("");
   const [busy, setBusy] = useState(false);
-  const isManager = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "");
+  const isManager = useCan()("APPROVE");
   const businessId = activeBusiness?.businessId;
   const countId = Number(params.id);
 

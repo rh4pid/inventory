@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.DTO.ProductDTO;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.DTO.ProductDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.*;
 import com.ultimate.inventory.Repository.*;
@@ -39,7 +40,7 @@ public class ProductService {
 
     @Transactional
     public Product createProduct(Long businessId, ProductDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         if (dto.getSku() != null && !dto.getSku().isBlank()) {
@@ -60,7 +61,7 @@ public class ProductService {
 
     @Transactional
     public Product updateProduct(Long businessId, Long productId, ProductDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, business)
@@ -98,7 +99,7 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long businessId, Long productId, String userEmail) {
-        accessHelper.requireManager(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Product not found"));

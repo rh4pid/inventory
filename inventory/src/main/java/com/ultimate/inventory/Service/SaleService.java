@@ -50,7 +50,7 @@ public class SaleService {
 
     @Transactional
     public Invoice createSale(Long businessId, SaleDTO dto, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
 
@@ -164,7 +164,7 @@ public class SaleService {
     }
 
     public Page<Invoice> listSales(Long businessId, String userEmail, Pageable pageable) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         java.util.Set<Long> allowed = accessHelper.allowedShopIds(member);
         if (allowed != null) {
@@ -175,7 +175,7 @@ public class SaleService {
     }
 
     public Invoice getSale(Long businessId, Long invoiceId, String userEmail) {
-        BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));

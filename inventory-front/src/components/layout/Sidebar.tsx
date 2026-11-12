@@ -16,20 +16,22 @@ import {
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { LogoMark } from "./Logo";
+import { useCan, type Capability } from "@/lib/access";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
-export const NAV: { label: string; href: string; icon: Icon }[] = [
+/** Main menu; each item shows only for roles that can use it (see lib/access.ts). */
+export const NAV: { label: string; href: string; icon: Icon; need?: Capability | Capability[] }[] = [
   { label: "Overview",   href: "/overview",   icon: Home },
-  { label: "Point of sale", href: "/pos",     icon: ScanLine },
-  { label: "Products",   href: "/products",   icon: Package },
-  { label: "Categories", href: "/categories", icon: Tag },
-  { label: "Inventory",  href: "/inventory",  icon: Warehouse },
-  { label: "Sales",      href: "/sales",      icon: ShoppingBag },
-  { label: "Purchases",  href: "/purchases",  icon: Truck },
-  { label: "Customers",  href: "/customers",  icon: Users },
-  { label: "Suppliers",  href: "/suppliers",  icon: Building2 },
-  { label: "Payroll",    href: "/payroll",    icon: Wallet },
+  { label: "Point of sale", href: "/pos",     icon: ScanLine, need: "SELL" },
+  { label: "Products",   href: "/products",   icon: Package, need: "VIEW_STOCK" },
+  { label: "Categories", href: "/categories", icon: Tag, need: "MANAGE_CATALOG" },
+  { label: "Inventory",  href: "/inventory",  icon: Warehouse, need: "VIEW_STOCK" },
+  { label: "Sales",      href: "/sales",      icon: ShoppingBag, need: "SELL" },
+  { label: "Purchases",  href: "/purchases",  icon: Truck, need: "RECEIVE" },
+  { label: "Customers",  href: "/customers",  icon: Users, need: "MANAGE_CUSTOMERS" },
+  { label: "Suppliers",  href: "/suppliers",  icon: Building2, need: "MANAGE_SUPPLIERS" },
+  { label: "Payroll",    href: "/payroll",    icon: Wallet, need: "MANAGE_PAYROLL" },
 ];
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -99,13 +101,14 @@ function UserMenu({ align = "start" }: { align?: "start" | "end" }) {
 /** The icon rail on the left of the app frame (desktop). */
 export function Sidebar() {
   const pathname = usePathname();
+  const can = useCan();
   return (
     <aside className="hidden w-[88px] shrink-0 flex-col items-center py-5 md:flex">
       <Link href="/overview" aria-label="Inventory home" className="mb-5 flex h-12 w-12 items-center justify-center">
         <LogoMark />
       </Link>
       <nav aria-label="Main" className="flex flex-1 flex-col items-center gap-2 px-2 pb-2">
-        {NAV.map((item) => (
+        {NAV.filter((item) => can(item.need)).map((item) => (
           <RailLink key={item.href} {...item} active={isActive(pathname, item.href)} />
         ))}
       </nav>
@@ -120,6 +123,7 @@ export function Sidebar() {
 /** Full-screen navigation for small screens, opened from the header's menu button. */
 export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const can = useCan();
   const { activeBusiness } = useBusiness();
 
   useEffect(() => { onClose(); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -142,7 +146,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto">
-          {[...NAV, { label: "Settings", href: "/settings", icon: Settings }].map(({ label, href, icon: Icon }) => {
+          {[...NAV.filter((n) => can(n.need)), { label: "Settings", href: "/settings", icon: Settings }].map(({ label, href, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link

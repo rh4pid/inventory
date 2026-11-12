@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.Constants.AccountPurpose;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.Constants.AccountPurpose;
 import com.ultimate.inventory.Constants.AccountType;
 import com.ultimate.inventory.DTO.AccountDTO;
 import com.ultimate.inventory.Exception.AppException;
@@ -31,7 +32,7 @@ public class AccountService {
 
     @Transactional
     public List<Account> setupDefaultAccounts(Long businessId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_ACCOUNTS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Object[][] defaults = {
@@ -69,7 +70,7 @@ public class AccountService {
 
     @Transactional
     public Account createAccount(Long businessId, AccountDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_ACCOUNTS);
         Business business = accessHelper.requireBusiness(businessId);
 
         if (accountRepo.existsByBusinessAndAccountCode(business, dto.getAccountCode())) {
@@ -89,13 +90,13 @@ public class AccountService {
     }
 
     public List<Account> listAccounts(Long businessId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_ACCOUNTS);
         Business business = accessHelper.requireBusiness(businessId);
         return accountRepo.findByBusinessAndActiveTrue(business);
     }
 
     public Account getAccount(Long businessId, Long accountId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_ACCOUNTS);
         Business business = accessHelper.requireBusiness(businessId);
         return accountRepo.findByIdAndBusiness(accountId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Account not found"));
@@ -103,7 +104,7 @@ public class AccountService {
 
     @Transactional
     public Account updateAccount(Long businessId, Long accountId, AccountDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_ACCOUNTS);
         Business business = accessHelper.requireBusiness(businessId);
 
         Account account = accountRepo.findByIdAndBusiness(accountId, business)

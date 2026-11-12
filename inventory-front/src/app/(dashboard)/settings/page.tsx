@@ -1,50 +1,54 @@
 "use client";
 import Link from "next/link";
 import { BookOpen, User, Bell, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound } from "lucide-react";
+import { useCan, type Capability } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
-const MANAGERS = ["OWNER", "ADMIN", "MANAGER"];
-
-const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; managersOnly?: boolean }[] = [
+const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; need?: Capability }[] = [
   {
     icon: UsersRound,
     title: "Team",
     description: "Create sign-ins for your people, set their roles and locations",
     href: "/settings/team",
-    managersOnly: true,
+    need: "MANAGE_TEAM",
   },
   {
     icon: SlidersHorizontal,
     title: "Business Type & Features",
     description: "Choose your business type and switch stock features on or off",
     href: "/settings/features",
+    need: "MANAGE_SETTINGS",
   },
   {
     icon: MapPin,
     title: "Locations",
     description: "Shops, warehouses, storerooms and other places you hold stock",
     href: "/settings/locations",
+    need: "MANAGE_LOCATIONS",
   },
   {
     icon: Ruler,
     title: "Units of Measure",
     description: "Pieces, cartons, kilograms… the units products are counted in",
     href: "/settings/units",
+    need: "MANAGE_CATALOG",
   },
   {
     icon: BookOpen,
     title: "Chart of Accounts",
     description: "Set up and manage your accounting accounts",
     href: "/settings/accounts",
+    need: "MANAGE_ACCOUNTS",
   },
   {
     icon: Building2,
     title: "Business Info",
     description: "Update your business name, logo, and contact details",
     href: "/settings/business",
+    need: "MANAGE_SETTINGS",
   },
   {
     icon: User,
@@ -57,10 +61,12 @@ const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: stri
     title: "Notifications",
     description: "Configure low-stock alerts and other notifications",
     href: "/settings/notifications",
+    need: "MANAGE_SETTINGS",
   },
 ];
 
 export default function SettingsPage() {
+  const can = useCan();
   const { activeBusiness } = useBusiness();
   const { user } = useAuth();
 
@@ -82,7 +88,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {SECTIONS.filter((s) => !s.managersOnly || MANAGERS.includes(activeBusiness?.role ?? "")).map((s) => (
+        {SECTIONS.filter((s) => can(s.need)).map((s) => (
           <Link key={s.href} href={s.href}>
             <Card className="hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
               <CardContent className="flex items-center gap-4 p-5">

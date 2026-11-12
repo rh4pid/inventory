@@ -39,7 +39,8 @@ public class BatchService {
     /** Read model returned to clients. */
     public record BatchView(Long id, Long productId, String productName, String sku, String baseUnit,
                             Long shopId, String shopName, String batchNumber, LocalDate expiryDate,
-                            Long daysToExpiry, String status, Date receivedAt, Double unitCost,
+                            Long daysToExpiry, String status, Date receivedAt,
+                            @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class) Double unitCost,
                             Double quantityReceived, Double quantityRemaining, String source) {}
 
     private final StockBatchRepository batchRepo;

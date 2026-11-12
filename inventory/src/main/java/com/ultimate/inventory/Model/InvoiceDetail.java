@@ -42,6 +42,10 @@ public class InvoiceDetail extends Model {
     @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
 
+    // Only owners, admins and managers see costs (see CostVisibility).
+
+    @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class)
+
     @Column(name = "cost_price", precision = 19, scale = 2)
     private BigDecimal costPrice;
 

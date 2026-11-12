@@ -41,6 +41,10 @@ public class Product extends Model {
     @Column
     private String image;
 
+    // Only owners, admins and managers see costs (see CostVisibility).
+
+    @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class)
+
     @Column(name = "cost_price")
     private Double costPrice;
 

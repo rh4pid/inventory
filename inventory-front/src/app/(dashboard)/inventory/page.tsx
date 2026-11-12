@@ -7,6 +7,7 @@ import {
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useCan, type Capability } from "@/lib/access";
 import { inventory as invApi, products as productsApi, suppliers as suppliersApi, shops as shopsApi, stockRequests as requestsApi } from "@/lib/api";
 import { MOVEMENT_LABELS, fmtQty, locationTypeLabel } from "@/constants/Inventory";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -23,6 +24,7 @@ import type { Inventory, Product, Supplier, Shop, StockBatch, StockMovement } fr
 type View = "stock" | "batches" | "history";
 
 export default function InventoryPage() {
+  const can = useCan();
   const { activeBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
   const [items, setItems] = useState<Inventory[]>([]);
@@ -68,7 +70,8 @@ export default function InventoryPage() {
         shopsApi.list(businessId, { mine: true }),
         shopsApi.list(businessId),
         productsApi.list(businessId, { size: 200 }),
-        suppliersApi.list(businessId, { size: 100 }),
+        // Only people who receive stock can see suppliers; others just don't get the list.
+        suppliersApi.list(businessId, { size: 100 }).catch(() => ({ content: [] as Supplier[] })),
         trackExpiry ? invApi.expiring(businessId) : Promise.resolve([]),
         requestsApi.pendingCount(businessId).catch(() => ({ count: 0 })),
       ]);
@@ -104,11 +107,11 @@ export default function InventoryPage() {
 
   if (loading && shops.length === 0) return <PageLoader />;
 
-  const ACTIONS: { key: StockAction; label: string; icon: typeof ArrowDownToLine }[] = [
-    { key: "in", label: "Stock In", icon: ArrowDownToLine },
-    { key: "out", label: "Stock Out", icon: ArrowUpFromLine },
-    { key: "transfer", label: "Transfer", icon: ArrowRightLeft },
-    { key: "adjust", label: "Adjust", icon: SlidersHorizontal },
+  const ACTIONS: { key: StockAction; label: string; icon: typeof ArrowDownToLine; need: Capability }[] = [
+    { key: "in", label: "Stock In", icon: ArrowDownToLine, need: "STOCK_IN" },
+    { key: "out", label: "Stock Out", icon: ArrowUpFromLine, need: "STOCK_OUT" },
+    { key: "transfer", label: "Transfer", icon: ArrowRightLeft, need: "TRANSFER" },
+    { key: "adjust", label: "Adjust", icon: SlidersHorizontal, need: "ADJUST" },
   ];
 
   const expired = expiring.filter((b) => b.status === "EXPIRED");
@@ -127,18 +130,20 @@ export default function InventoryPage() {
         description="Track stock levels and every movement across your locations"
         action={
           <div className="flex flex-wrap gap-2">
-            <Link href="/inventory/counts">
-              <Button variant="outline" size="sm"><ClipboardList className="h-4 w-4" /> Stock counts</Button>
-            </Link>
-            <Link href="/inventory/approvals">
+            {can("COUNT") && (
+              <Link href="/inventory/counts">
+                <Button variant="outline" size="sm"><ClipboardList className="h-4 w-4" /> Stock counts</Button>
+              </Link>
+            )}
+            {can(["APPROVE", "STOCK_OUT", "ADJUST"]) && <Link href="/inventory/approvals">
               <Button variant="outline" size="sm">
-                <ClipboardCheck className="h-4 w-4" /> Approvals
+                <ClipboardCheck className="h-4 w-4" /> {can("APPROVE") ? "Approvals" : "My requests"}
                 {pendingApprovals > 0 && (
                   <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">{pendingApprovals}</span>
                 )}
               </Button>
-            </Link>
-            {ACTIONS.map((a) => (
+            </Link>}
+            {ACTIONS.filter((a) => can(a.need)).map((a) => (
               <Button key={a.key} variant="outline" size="sm" onClick={() => open(a.key)} disabled={shops.length === 0}>
                 <a.icon className="h-4 w-4" /> {a.label}
               </Button>
@@ -286,14 +291,14 @@ export default function InventoryPage() {
                       <TableCell className="text-xs text-gray-500">{b.source ?? "—"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm"
+                          {can("STOCK_OUT") && <Button variant="ghost" size="sm"
                             onClick={() => open("out", { productId: b.productId, shopId: b.shopId, batchId: b.id })}>
                             {b.status === "EXPIRED" ? "Write off" : "Remove"}
-                          </Button>
-                          <Button variant="ghost" size="sm"
+                          </Button>}
+                          {can("TRANSFER") && <Button variant="ghost" size="sm"
                             onClick={() => open("transfer", { productId: b.productId, shopId: b.shopId, batchId: b.id })}>
                             Move
-                          </Button>
+                          </Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -367,7 +372,7 @@ export default function InventoryPage() {
           multipleUnits={Boolean(settings?.multipleUnits)}
           trackBatches={trackBatches}
           trackExpiry={trackExpiry}
-          needsApproval={Boolean(settings?.requireAdjustmentApproval) && !["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness?.role ?? "")}
+          needsApproval={Boolean(settings?.requireAdjustmentApproval) && !can("APPROVE")}
         />
       )}
     </div>
