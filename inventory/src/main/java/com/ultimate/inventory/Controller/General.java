@@ -41,7 +41,7 @@ public class General {
     @GetMapping("/shop/{shopId}")
     public ResponseEntity<?> getShop(@PathVariable Long shopId,
                                      @AuthenticationPrincipal String email) {
-        return ResponseEntity.ok(shopService.getShop(shopId));
+        return ResponseEntity.ok(shopService.getShop(shopId, email));
     }
 
     @GetMapping("/business/{businessId}/shops")
@@ -55,14 +55,16 @@ public class General {
 
     @PutMapping("/shop/{shopId}")
     public ResponseEntity<?> updateShop(@PathVariable Long shopId,
-                                        @RequestBody @Validated ShopDTO dto) {
-        shopService.updateShop(shopId, dto);
+                                        @RequestBody @Validated ShopDTO dto,
+                                        @AuthenticationPrincipal String email) {
+        shopService.updateShop(shopId, dto, email);
         return ResponseEntity.ok(new ResponseDTO(true, "Shop updated successfully"));
     }
 
     @DeleteMapping("/shop/{shopId}")
-    public ResponseEntity<?> deleteShop(@PathVariable Long shopId) {
-        shopService.deleteShop(shopId);
+    public ResponseEntity<?> deleteShop(@PathVariable Long shopId,
+                                        @AuthenticationPrincipal String email) {
+        shopService.deleteShop(shopId, email);
         return ResponseEntity.ok(new ResponseDTO(true, "Shop deleted successfully"));
     }
 

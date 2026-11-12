@@ -6,6 +6,9 @@ import type {
   Invoice, SalePayload, PurchasePayload, Payment, PaymentPayload,
   Account, AccountPayload, PageResponse, Shop,
   Employee, EmployeePayload, BusinessUser,
+  ShopPayload, Unit, ProductUnit, ProductUnitPayload, StockMovement, StockBatch,
+  StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
+  BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -65,9 +68,43 @@ export const users = {
 };
 
 // ── Shops ────────────────────────────────────────────────────────────────────
+// Shops are stock locations of any kind (shop, warehouse, storeroom…).
 export const shops = {
+  list: (businessId: number, params?: { page?: number; size?: number }) =>
+    req<PageResponse<Shop>>(`/general/business/${businessId}/shops${qs({ size: 100, ...params })}`),
+  create: (data: ShopPayload) =>
+    req<unknown>(`/general/shop`, { method: "POST", body: JSON.stringify(data) }),
+  update: (shopId: number, data: ShopPayload) =>
+    req<unknown>(`/general/shop/${shopId}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (shopId: number) =>
+    req<unknown>(`/general/shop/${shopId}`, { method: "DELETE" }),
+};
+
+// ── Business settings & reference data ──────────────────────────────────────
+export const settings = {
+  get: (businessId: number) =>
+    req<BusinessSettings>(`/businesses/${businessId}/settings`),
+  update: (businessId: number, data: BusinessSettingsPayload) =>
+    req<BusinessSettings>(`/businesses/${businessId}/settings`, { method: "PUT", body: JSON.stringify(data) }),
+  businessTypes: () => req<BusinessTypeOption[]>(`/reference/business-types`),
+};
+
+// ── Units of measure & product pack sizes ───────────────────────────────────
+export const units = {
   list: (businessId: number) =>
-    req<PageResponse<Shop>>(`/business/${businessId}/shops`),
+    req<Unit[]>(`/businesses/${businessId}/units`),
+  create: (businessId: number, data: { name: string; symbol?: string }) =>
+    req<Unit>(`/businesses/${businessId}/units`, { method: "POST", body: JSON.stringify(data) }),
+  update: (businessId: number, id: number, data: { name: string; symbol?: string }) =>
+    req<Unit>(`/businesses/${businessId}/units/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (businessId: number, id: number) =>
+    req<void>(`/businesses/${businessId}/units/${id}`, { method: "DELETE" }),
+  forProduct: (businessId: number, productId: number) =>
+    req<ProductUnit[]>(`/businesses/${businessId}/products/${productId}/units`),
+  setForProduct: (businessId: number, productId: number, data: ProductUnitPayload[]) =>
+    req<ProductUnit[]>(`/businesses/${businessId}/products/${productId}/units`, {
+      method: "PUT", body: JSON.stringify(data),
+    }),
 };
 
 // ── Products ─────────────────────────────────────────────────────────────────
@@ -130,12 +167,18 @@ export const inventory = {
     req<PageResponse<Inventory>>(`/businesses/${businessId}/shops/${shopId}/inventory${qs(params)}`),
   lowStock: (businessId: number) =>
     req<Inventory[]>(`/businesses/${businessId}/inventory/low-stock`),
+  batches: (businessId: number, params?: { shopId?: number; productId?: number; includeEmpty?: boolean }) =>
+    req<StockBatch[]>(`/businesses/${businessId}/inventory/batches${qs(params)}`),
+  expiring: (businessId: number, params?: { shopId?: number; days?: number }) =>
+    req<StockBatch[]>(`/businesses/${businessId}/inventory/expiring${qs(params)}`),
+  movements: (businessId: number, params?: { shopId?: number; productId?: number; page?: number; size?: number }) =>
+    req<PageResponse<StockMovement>>(`/businesses/${businessId}/inventory/movements${qs(params)}`),
   stockIn: (businessId: number, data: StockInPayload) =>
     req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-in`, {
       method: "POST", body: JSON.stringify(data),
     }),
   stockOut: (businessId: number, data: StockOutPayload) =>
-    req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-out`, {
+    req<StockActionResponse>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-out`, {
       method: "POST", body: JSON.stringify(data),
     }),
   transfer: (businessId: number, data: StockTransferPayload) =>
@@ -143,7 +186,7 @@ export const inventory = {
       method: "POST", body: JSON.stringify(data),
     }),
   adjust: (businessId: number, data: StockAdjustmentPayload) =>
-    req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/adjust`, {
+    req<StockActionResponse>(`/businesses/${businessId}/shops/${data.shopId}/inventory/adjust`, {
       method: "POST", body: JSON.stringify(data),
     }),
 };
@@ -164,6 +207,50 @@ export const sales = {
     }),
   listPayments: (businessId: number, invoiceId: number) =>
     req<Payment[]>(`/businesses/${businessId}/sales/${invoiceId}/payments`),
+};
+
+// ── Approvals (stock-outs / adjustments waiting for a manager) ────────────────
+export const stockRequests = {
+  list: (businessId: number, status?: StockRequestStatus) =>
+    req<StockRequest[]>(`/businesses/${businessId}/stock-requests${qs({ status })}`),
+  pendingCount: (businessId: number) =>
+    req<{ count: number }>(`/businesses/${businessId}/stock-requests/pending-count`),
+  approve: (businessId: number, id: number, note?: string) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/approve`, {
+      method: "POST", body: JSON.stringify({ note }),
+    }),
+  reject: (businessId: number, id: number, note?: string) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/reject`, {
+      method: "POST", body: JSON.stringify({ note }),
+    }),
+  cancel: (businessId: number, id: number) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/cancel`, { method: "POST" }),
+};
+
+// ── Stock counts (stocktakes) ────────────────────────────────────────────────
+export const stockCounts = {
+  list: (businessId: number) =>
+    req<StockCount[]>(`/businesses/${businessId}/stock-counts`),
+  start: (businessId: number, shopId: number, notes?: string) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts`, {
+      method: "POST", body: JSON.stringify({ shopId, notes }),
+    }),
+  get: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}`),
+  addProduct: (businessId: number, id: number, productId: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/lines`, {
+      method: "POST", body: JSON.stringify({ productId }),
+    }),
+  saveCounts: (businessId: number, id: number, entries: { lineId: number; countedQuantity: number | null }[]) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/lines`, {
+      method: "PUT", body: JSON.stringify(entries),
+    }),
+  complete: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/complete`, { method: "POST" }),
+  reopen: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/reopen`, { method: "POST" }),
+  cancel: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/cancel`, { method: "POST" }),
 };
 
 // ── Purchases ────────────────────────────────────────────────────────────────

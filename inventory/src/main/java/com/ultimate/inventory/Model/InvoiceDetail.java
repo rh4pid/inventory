@@ -23,6 +23,18 @@ public class InvoiceDetail extends Model {
     @Column(nullable = false)
     private Double quantity;
 
+    /** Unit the line was entered in (e.g. "Carton"); null = product base unit. */
+    @Column(name = "unit_name")
+    private String unitName;
+
+    /** Quantity converted to the product base unit: what actually moved in stock. */
+    @Column(name = "base_quantity")
+    private Double baseQuantity;
+
+    /** Batches the line was taken from / received into, e.g. "LOT-A12 x3, LOT-B07 x2" (for recalls). */
+    @Column(name = "batch_info", length = 500)
+    private String batchInfo;
+
     @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
 

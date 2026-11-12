@@ -1,12 +1,30 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, User, Bell, Building2 } from "lucide-react";
+import { BookOpen, User, Bell, Building2, SlidersHorizontal, MapPin, Ruler } from "lucide-react";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
 const SECTIONS = [
+  {
+    icon: SlidersHorizontal,
+    title: "Business Type & Features",
+    description: "Choose your business type and switch stock features on or off",
+    href: "/settings/features",
+  },
+  {
+    icon: MapPin,
+    title: "Locations",
+    description: "Shops, warehouses, storerooms and other places you hold stock",
+    href: "/settings/locations",
+  },
+  {
+    icon: Ruler,
+    title: "Units of Measure",
+    description: "Pieces, cartons, kilograms… the units products are counted in",
+    href: "/settings/units",
+  },
   {
     icon: BookOpen,
     title: "Chart of Accounts",

@@ -1,5 +1,7 @@
 package com.ultimate.inventory.Service;
 
+import com.ultimate.inventory.Constants.LocationType;
+import com.ultimate.inventory.Constants.UserRoles;
 import com.ultimate.inventory.DTO.ExcelUpload.UploadShop;
 import com.ultimate.inventory.DTO.ShopDTO;
 import com.ultimate.inventory.Exception.AppException;
@@ -24,7 +26,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ShopService {
@@ -37,16 +41,25 @@ public class ShopService {
     @Autowired private BusinessUserRepo businessUserRepo;
     @Autowired private ShopUsersRepository shopUsersRepo;
     @Autowired private ExcelService excelService;
+    @Autowired private BusinessAccessHelper accessHelper;
 
     @Transactional
     public Shop createShop(ShopDTO dto, String userEmail) {
-        Business business = businessRepo.findById(dto.getBusinessId().longValue())
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Business not found"));
+        Long businessId = dto.getBusinessId().longValue();
+        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
+        Business business = accessHelper.requireBusiness(businessId);
 
         Shop shop = new Shop();
         shop.setShopName(dto.getShopName());
         shop.setShopLocation(dto.getShopLocation());
+        shop.setLocationType(dto.getLocationType() != null ? dto.getLocationType() : LocationType.SHOP);
+        shop.setActive(true);
+        shop.setDeleted(false);
         shop.setBusiness(business);
+        shop.setCreatedBy(userEmail);
+        shop.setCreatedAt(new Date());
+        // shop_code is NOT NULL; use a temporary unique code until the id is known.
+        shop.setShopCode("TMP-" + UUID.randomUUID());
         shop = shopRepo.save(shop);
         shop.setShopCode("SHP" + shop.getId() + business.getCode());
         shop = shopRepo.save(shop);
@@ -88,7 +101,11 @@ public class ShopService {
             Shop shop = new Shop();
             shop.setShopName(row.getShopName());
             shop.setShopLocation(row.getShopLocation());
+            shop.setLocationType(LocationType.SHOP);
+            shop.setActive(true);
+            shop.setDeleted(false);
             shop.setBusiness(business);
+            shop.setShopCode("TMP-" + UUID.randomUUID());
             shop = shopRepo.save(shop);
             shop.setShopCode("SHP" + shop.getId() + business.getCode());
             shop = shopRepo.save(shop);
@@ -102,9 +119,11 @@ public class ShopService {
         log.info("Bulk created {} shops for business: {}", rows.size(), business.getCode());
     }
 
-    public Shop getShop(Long shopId) {
-        return shopRepo.findById(shopId)
+    public Shop getShop(Long shopId, String userEmail) {
+        Shop shop = shopRepo.findById(shopId)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Shop not found"));
+        accessHelper.requireMembership(shop.getBusiness().getId(), userEmail);
+        return shop;
     }
 
     public Page<Shop> getShopsByBusiness(Long businessId, String userEmail, Pageable pageable) {
@@ -116,26 +135,37 @@ public class ShopService {
             throw new AppException(HttpStatus.FORBIDDEN, "You do not belong to this business");
         }
 
-        return shopRepo.findByBusiness(business, pageable);
+        return shopRepo.findActiveByBusiness(business, pageable);
     }
 
     @Transactional
-    public Shop updateShop(Long shopId, ShopDTO dto) {
-        Shop shop = shopRepo.findById(shopId)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Shop not found"));
-
+    public Shop updateShop(Long shopId, ShopDTO dto, String userEmail) {
+        Shop shop = requireManagedShop(shopId, userEmail);
         shop.setShopName(dto.getShopName());
         shop.setShopLocation(dto.getShopLocation());
+        if (dto.getLocationType() != null) shop.setLocationType(dto.getLocationType());
         if (dto.getActive() != null) shop.setActive(dto.getActive());
+        shop.setUpdatedBy(userEmail);
+        shop.setUpdatedAt(new Date());
         return shopRepo.save(shop);
     }
 
     @Transactional
-    public void deleteShop(Long shopId) {
+    public void deleteShop(Long shopId, String userEmail) {
+        Shop shop = requireManagedShop(shopId, userEmail);
+        shop.setDeleted(true);
+        shop.setUpdatedBy(userEmail);
+        shop.setUpdatedAt(new Date());
+        shopRepo.save(shop);
+        log.info("Shop soft-deleted: {} by {}", shopId, userEmail);
+    }
+
+    /** Loads a shop and checks the caller may manage locations in its business. */
+    private Shop requireManagedShop(Long shopId, String userEmail) {
         Shop shop = shopRepo.findById(shopId)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Shop not found"));
-        shop.setDeleted(true);
-        shopRepo.save(shop);
-        log.info("Shop soft-deleted: {}", shopId);
+        accessHelper.requireRole(shop.getBusiness().getId(), userEmail,
+                UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
+        return shop;
     }
 }

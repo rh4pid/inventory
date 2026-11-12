@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { VoidInvoiceButton } from "@/components/shared/VoidInvoiceButton";
 import type { Invoice } from "@/Types";
 
 export default function PurchasesPage() {
@@ -68,6 +69,7 @@ export default function PurchasesPage() {
                 <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -84,6 +86,7 @@ export default function PurchasesPage() {
                   <TableCell className="text-xs text-gray-500">
                     {p.createdAt ? formatDate(p.createdAt) : "—"}
                   </TableCell>
+                  <TableCell><VoidInvoiceButton invoice={p} onDone={load} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

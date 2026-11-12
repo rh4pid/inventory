@@ -97,6 +97,8 @@ public class DataSeeder implements CommandLineRunner {
 
         Shop shop1 = makeShop("Main Store", "123 High Street", biz1);
         Shop shop1b = makeShop("Warehouse", "45 Industrial Ave", biz1);
+        shop1b.setLocationType(com.ultimate.inventory.Constants.LocationType.WAREHOUSE);
+        shop1b = shopRepo.save(shop1b);
 
         Category elec   = makeCategory("Electronics", null, biz1);
         Category food   = makeCategory("Food & Beverages", null, biz1);

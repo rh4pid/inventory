@@ -2,6 +2,7 @@ package com.ultimate.inventory.Repository;
 
 import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.Product;
+import com.ultimate.inventory.Model.Unit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,4 +17,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByBusinessAndSku(Business business, String sku);
     Page<Product> findByBusinessAndProductNameContainingIgnoreCaseAndDeletedFalse(
             Business business, String productName, Pageable pageable);
+    boolean existsByUnit(Unit unit);
 }

@@ -32,11 +32,13 @@ public class SaleService {
     private final InventoryService inventoryService;
     private final JournalService journalService;
     private final BusinessAccessHelper accessHelper;
+    private final UnitService unitService;
 
     public SaleService(InvoiceRepository invoiceRepo, InvoiceDetailRepository detailRepo,
                        ProductRepository productRepo, CustomerRepository customerRepo,
                        InventoryService inventoryService, JournalService journalService,
-                       BusinessAccessHelper accessHelper) {
+                       BusinessAccessHelper accessHelper, UnitService unitService) {
+        this.unitService = unitService;
         this.invoiceRepo = invoiceRepo;
         this.detailRepo = detailRepo;
         this.productRepo = productRepo;
@@ -83,25 +85,46 @@ public class SaleService {
                     .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND,
                             "Product not found: " + item.getProductId()));
 
-            BigDecimal unitPrice = item.getUnitPrice() != null
-                    ? item.getUnitPrice()
-                    : BigDecimal.valueOf(product.getSellingPrice());
+            // Quantity may be entered in a pack size (e.g. 2 Cartons); stock moves in base units.
+            UnitService.Conversion conv = unitService.resolve(product, item.getUnitId());
+            double baseQty = conv.toBase(item.getQuantity());
+            BigDecimal factor = BigDecimal.valueOf(conv.factor());
+
+            BigDecimal unitPrice;
+            if (item.getUnitPrice() != null) {
+                unitPrice = item.getUnitPrice();
+            } else if (conv.productUnit() != null && conv.productUnit().getSellingPrice() != null) {
+                unitPrice = BigDecimal.valueOf(conv.productUnit().getSellingPrice());
+            } else {
+                unitPrice = BigDecimal.valueOf(product.getSellingPrice()).multiply(factor)
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
 
             BigDecimal lineDiscount = item.getDiscountAmount() != null ? item.getDiscountAmount() : BigDecimal.ZERO;
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()))
                     .subtract(lineDiscount).setScale(2, RoundingMode.HALF_UP);
 
-            BigDecimal costPrice = BigDecimal.valueOf(product.getCostPrice() != null ? product.getCostPrice() : 0.0);
-            BigDecimal lineCogs = costPrice.multiply(BigDecimal.valueOf(item.getQuantity()))
-                    .setScale(2, RoundingMode.HALF_UP);
+            InventoryService.Deduction taken = inventoryService.deduct(product, shop, baseQty,
+                    StockMovementType.SALE,
+                    InventoryService.Ctx.of("Sale #" + saved.getInvoiceNumber(), userEmail)
+                            .withReference(saved.getInvoiceNumber())
+                            .withEntered(InventoryService.Entered.of(item.getQuantity(), conv)),
+                    item.getBatchId());
 
-            inventoryService.deductInventory(product, shop, item.getQuantity(),
-                    StockMovementType.SALE, "Sale #" + saved.getInvoiceNumber(), userEmail);
+            // Cost of goods sold uses each batch's own cost when batches are tracked.
+            double productCost = product.getCostPrice() != null ? product.getCostPrice() : 0.0;
+            BigDecimal lineCogs = BigDecimal.valueOf(taken.slices().isEmpty()
+                            ? productCost * baseQty : taken.cost(productCost))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal costPrice = lineCogs.divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP);
 
             InvoiceDetail detail = new InvoiceDetail();
             detail.setInvoice(saved);
             detail.setProduct(product);
             detail.setQuantity(item.getQuantity());
+            detail.setUnitName(conv.isBase() ? null : conv.productUnit().getUnit().getName());
+            detail.setBaseQuantity(baseQty);
+            detail.setBatchInfo(taken.batchSummary());
             detail.setUnitPrice(unitPrice);
             detail.setCostPrice(costPrice);
             detail.setDiscountAmount(lineDiscount);
@@ -157,8 +180,10 @@ public class SaleService {
         return invoice;
     }
 
+    /** Voids an unpaid sale and puts its stock back into the batches it came from. Managers only. */
     @Transactional
     public Invoice voidSale(Long businessId, Long invoiceId, String userEmail) {
+        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
         Invoice invoice = getSale(businessId, invoiceId, userEmail);
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
             throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
@@ -167,6 +192,7 @@ public class SaleService {
             throw new AppException(HttpStatus.CONFLICT,
                     "Cannot void an invoice with payments. Reverse the payments first.");
         }
+        inventoryService.reverseSale(invoice, detailRepo.findByInvoice(invoice), userEmail);
         invoice.setInvoiceStatus(InvoiceStatus.VOID);
         invoice.setPaymentStatus(PaymentStatus.VOID);
         invoice.setUpdatedBy(userEmail);
