@@ -80,6 +80,8 @@ export type BusinessType =
 export interface BusinessSettings {
   /** Who last saved the settings (audit field). */
   updatedBy?: string;
+  /** Colour theme id (lib/themes.ts); null = automatic from the business type. */
+  theme?: string | null;
   businessType: BusinessType;
   currencyCode: string;
   currencySymbol: string;
@@ -612,3 +614,9 @@ export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[]
 export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[] }
 
 export interface TeamAdded { member: TeamMember; temporaryPassword: string | null; existingAccount: boolean }
+
+/** A company's name and contact details (Settings → Business info). */
+export interface BusinessProfile {
+  id: number; name: string; code: string; email?: string | null; contact?: string | null;
+  secondaryContact?: string | null; logo?: string | null;
+}

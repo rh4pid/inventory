@@ -1,12 +1,15 @@
 import { cn } from "@/lib/utils";
 
-/** Three stacked cubes, the product mark. */
+/** Three stacked cubes, the product mark. Coloured with the company theme's accent. */
 export function LogoMark({ className }: { className?: string }) {
+  const top = { fill: "color-mix(in srgb, var(--brand-orange) 70%, white)" };
+  const left = { fill: "var(--brand-orange)" };
+  const right = { fill: "var(--brand-orange-deep)" };
   const cube = (x: number, y: number) => (
     <g transform={`translate(${x} ${y})`}>
-      <path d="M10 0 20 5.5 10 11 0 5.5Z" fill="#ff8a5c" />
-      <path d="M0 5.5 10 11v11L0 16.5Z" fill="#f2622e" />
-      <path d="M20 5.5 10 11v11l10-5.5Z" fill="#d9481a" />
+      <path d="M10 0 20 5.5 10 11 0 5.5Z" style={top} />
+      <path d="M0 5.5 10 11v11L0 16.5Z" style={left} />
+      <path d="M20 5.5 10 11v11l10-5.5Z" style={right} />
     </g>
   );
   return (

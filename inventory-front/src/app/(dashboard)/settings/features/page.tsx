@@ -1,4 +1,6 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
@@ -71,14 +73,14 @@ export default function FeaturesSettingsPage() {
       const updated = await settingsApi.update(activeBusiness.businessId, patch);
       setSettings(updated);
       toast.success("Settings saved");
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not save settings");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not save settings"));
     } finally {
       setSaving(false);
     }
   };
 
-  const changeType = (value: string) => {
+  const changeType = async (value: string) => {
     const type = value as BusinessType;
     const preset = types.find((t) => t.value === type);
     const summary = preset
@@ -86,9 +88,12 @@ export default function FeaturesSettingsPage() {
          preset.trackExpiry && "expiry dates", preset.requireAdjustmentApproval && "approvals"]
           .filter(Boolean).join(", ") || "no extra features"
       : "";
-    const apply = window.confirm(
-      `Switch on the recommended features for ${preset?.label ?? type}? (${summary})\n\n` +
-      "OK = apply recommended features. Cancel = only change the business type.");
+    const apply = await confirmAction({
+      title: `Switch on the recommended features for ${preset?.label ?? type}?`,
+      description: `Recommended: ${summary}. Either way the business type changes.`,
+      confirmLabel: "Apply recommended features",
+      cancelLabel: "Only change the type",
+    });
     save({ businessType: type, applyPreset: apply });
   };
 

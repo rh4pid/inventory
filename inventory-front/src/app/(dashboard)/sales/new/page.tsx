@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { sales as salesApi, products as productsApi, customers as customersApi, shops as shopsApi } from "@/lib/api";
+import { sales as salesApi, customers as customersApi, shops as shopsApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import { CartLineOptions, addProduct, type CartLine } from "@/components/sales/CartLineOptions";
 import { PAYMENT_METHODS } from "@/constants/Strings";
 import type { Product, Customer, Shop, SaleItemPayload, PaymentMethod } from "@/Types";
@@ -21,7 +22,6 @@ import type { Product, Customer, Shop, SaleItemPayload, PaymentMethod } from "@/
 export default function NewSalePage() {
   const router = useRouter();
   const { activeBusiness } = useBusiness();
-  const [prods, setProds] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -41,11 +41,9 @@ export default function NewSalePage() {
     if (!activeBusiness) return;
     const id = activeBusiness.businessId;
     Promise.all([
-      productsApi.list(id, { size: 100 }),
-      customersApi.list(id, { size: 100 }),
+      customersApi.list(id, { size: 200 }),
       shopsApi.list(id, { mine: true }),
-    ]).then(([p, c, s]) => {
-      setProds(p.content);
+    ]).then(([c, s]) => {
       setCustomers(c.content);
       setShops(s.content);
       if (s.content[0]) setShopId(s.content[0].id);
@@ -64,10 +62,8 @@ export default function NewSalePage() {
   const subtotal = cart.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - discount);
 
-  const filtered = prods.filter((p) =>
-    p.productName.toLowerCase().includes(search.toLowerCase()) ||
-    (p.sku ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  // Searched on the server (name, SKU or barcode), so any catalogue size works.
+  const { results: filtered } = useProductSearch(activeBusiness?.businessId, search, 50);
 
   const handleSubmit = async () => {
     if (!activeBusiness || !shopId) {
@@ -97,8 +93,8 @@ export default function NewSalePage() {
       });
       toast.success("Sale recorded");
       router.push("/sales");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create sale");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to create sale"));
     } finally {
       setSubmitting(false);
     }

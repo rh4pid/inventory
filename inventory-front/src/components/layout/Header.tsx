@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 import { useBusiness } from "@/context/BusinessContext";
 import { useWorkspace, PERIODS } from "@/context/WorkspaceContext";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { inventory as invApi, products as productsApi, stockRequests as requestsApi } from "@/lib/api";
+import { inventory as invApi, stockRequests as requestsApi } from "@/lib/api";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { locationTypeLabel } from "@/constants/Inventory";
-import type { Product } from "@/Types";
 import { Wordmark, LogoMark } from "./Logo";
 import { NAV } from "./Sidebar";
 import { useCan } from "@/lib/access";
@@ -220,20 +220,17 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
   const can = useCan();
   const { activeBusiness } = useBusiness();
   const [q, setQ] = useState("");
-  const [products, setProducts] = useState<Product[] | null>(null);
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setQ(""); setCursor(0);
-    if (activeBusiness && products === null) {
-      productsApi.list(activeBusiness.businessId, { size: 200 }).then((p) => setProducts(p.content)).catch(() => setProducts([]));
-    }
     setTimeout(() => inputRef.current?.focus(), 30);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  useEffect(() => { setProducts(null); }, [activeBusiness?.businessId]);
+  // Products are searched on the server as you type (name, SKU or barcode).
+  const { results: found } = useProductSearch(open && q.trim() ? activeBusiness?.businessId : undefined, q, 8);
 
   const results = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -241,12 +238,11 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
       .filter((n) => !term || n.label.toLowerCase().includes(term))
       .map((n) => ({ key: n.href, label: n.label, hint: "Page", href: n.href }));
     const prods = term
-      ? (products ?? []).filter((p) => p.productName.toLowerCase().includes(term) || (p.sku ?? "").toLowerCase().includes(term))
-          .slice(0, 8)
+      ? found
           .map((p) => ({ key: `p${p.id}`, label: p.productName, hint: p.sku ? `Product · ${p.sku}` : "Product", href: `/products?q=${encodeURIComponent(p.productName)}` }))
       : [];
     return [...prods, ...pages].slice(0, 12);
-  }, [q, products, can]);
+  }, [q, found, can]);
 
   const go = (href: string) => { onClose(); router.push(href); };
 

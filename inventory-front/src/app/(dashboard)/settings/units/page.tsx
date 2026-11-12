@@ -1,4 +1,6 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,7 +28,7 @@ export default function UnitsSettingsPage() {
   const load = useCallback(async () => {
     if (!activeBusiness) return;
     try { setList(await unitsApi.list(activeBusiness.businessId)); }
-    catch (err: any) { toast.error(err.message); setList([]); }
+    catch (err) { toast.error(errorMessage(err)); setList([]); }
   }, [activeBusiness]);
 
   useEffect(() => { load(); }, [load]);
@@ -47,17 +49,17 @@ export default function UnitsSettingsPage() {
       toast.success("Unit saved");
       setEditing(null);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setSaving(false); }
   };
 
   const remove = async (u: Unit) => {
-    if (!activeBusiness || !window.confirm(`Delete unit "${u.name}"?`)) return;
+    if (!activeBusiness || !(await confirmAction({ title: `Delete the unit "${u.name}"?`, confirmLabel: "Delete", tone: "danger" }))) return;
     try {
       await unitsApi.delete(activeBusiness.businessId, u.id);
       toast.success("Unit deleted");
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   if (!list) return <PageLoader />;

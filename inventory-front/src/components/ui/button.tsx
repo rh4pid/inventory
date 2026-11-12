@@ -7,8 +7,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:     "bg-brand text-white hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgb(53_99_233/0.8)]",
-        accent:      "bg-accent text-white hover:bg-accent-deep shadow-[0_6px_16px_-8px_rgb(242_98_46/0.8)]",
+        default:     "bg-brand-strong text-white hover:bg-brand-deep shadow-[var(--shadow-brand)]",
+        accent:      "bg-accent text-on-accent hover:bg-accent-deep shadow-[var(--shadow-accent)]",
         destructive: "bg-red-500 text-white hover:bg-red-600 shadow-sm",
         outline:     "border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink shadow-card",
         secondary:   "bg-surface-2 text-ink hover:bg-gray-200",

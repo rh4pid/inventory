@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
@@ -38,8 +39,8 @@ export function ChangePasswordForm({ currentLabel = "Current password", submitLa
       toast.success("Password changed");
       setCurrent(""); setNext(""); setConfirm("");
       onDone?.();
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not change password");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not change password"));
     } finally {
       setBusy(false);
     }

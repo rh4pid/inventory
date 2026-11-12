@@ -25,4 +25,6 @@ public class BusinessSettingsDTO {
     private Boolean multipleUnits;
     private Boolean allowNegativeStock;
     private Boolean requireAdjustmentApproval;
+    /** Theme id, or "auto" to follow the business type. */
+    private String theme;
 }

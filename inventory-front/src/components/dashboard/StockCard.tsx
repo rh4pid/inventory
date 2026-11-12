@@ -3,8 +3,8 @@ import { useId, useState } from "react";
 import type { DashboardData } from "@/Types";
 import { Panel, PanelHeader, fmtNum } from "./Panel";
 
-const NAVY = "#1c2541";
-const ORANGE = "#f2622e";
+const NAVY = "#1c2541"; // ink, same in every theme
+const ORANGE = "var(--brand-orange)"; // theme accent
 
 /**
  * The orange Stock card: a legend on the left and a patterned half-donut on the right.
@@ -65,7 +65,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
             aria-label={`Stock health: ${segments.map((s) => `${s.label} ${s.value}`).join(", ")}`}>
             <defs>
               <pattern id={`${uid}-stripes`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <rect width="7" height="7" fill={ORANGE} />
+                <rect width="7" height="7" style={{ fill: ORANGE }} />
                 <rect width="2.6" height="7" fill={NAVY} />
               </pattern>
               <pattern id={`${uid}-dots`} width="6" height="6" patternUnits="userSpaceOnUse">
@@ -81,7 +81,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
                 key={a.key}
                 d={a.d}
                 fill={a.fill}
-                stroke={ORANGE}
+                style={{ stroke: ORANGE }}
                 strokeWidth={0.5}
                 opacity={hover && hover !== a.key ? 0.45 : 1}
                 onMouseEnter={() => setHover(a.key)}
@@ -94,7 +94,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
           </svg>
           <div className="pointer-events-none absolute inset-x-0 bottom-[4%] text-center">
             <div className="text-xl font-semibold leading-none tabular-nums">{fmtNum(focus ? focus.value : total)}</div>
-            <div className="text-[11px] font-medium text-ink/75">{focus ? focus.label : "products"}</div>
+            <div className="text-[11px] font-medium text-on-accent/75">{focus ? focus.label : "products"}</div>
           </div>
         </div>
       </div>

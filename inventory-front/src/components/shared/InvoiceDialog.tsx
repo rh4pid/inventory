@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, errorMessage } from "@/lib/utils";
 import { PAYMENT_METHODS } from "@/constants/Strings";
 import type { Invoice, InvoiceDetailView, PaymentMethod } from "@/Types";
 import { useCan } from "@/lib/access";
@@ -48,7 +48,7 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
 
   const load = useCallback(async () => {
     try { setView(await api.detail(bizId, invoice.id)); }
-    catch (err: any) { toast.error(err.message); onClose(); }
+    catch (err) { toast.error(errorMessage(err)); onClose(); }
   }, [api, bizId, invoice.id, onClose]);
 
   useEffect(() => { if (bizId) load(); }, [bizId, load]);
@@ -88,7 +88,7 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
     try {
       await api.recordPayment(bizId, inv.id, { amount, paymentMethod: method });
       await done("Payment recorded");
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 
@@ -107,7 +107,7 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
     try {
       await api.returnItems(bizId, inv.id, { items: returnPicked, reason: reason.trim() || undefined, refundMethod: method });
       await done(isSale ? "Return recorded, stock put back" : "Return to supplier recorded");
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 
@@ -116,7 +116,7 @@ export function InvoiceDialog({ invoice, onClose, onChanged }: {
     try {
       await api.void(bizId, inv.id, paid > 0 ? method : undefined);
       await done(`${inv.invoiceNumber} voided`);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 

@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +33,7 @@ export default function AccountsPage() {
     try {
       const list = await accountsApi.list(activeBusiness.businessId);
       setItems(list);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness]);
 
@@ -45,8 +46,8 @@ export default function AccountsPage() {
       await accountsApi.setupDefaults(activeBusiness.businessId);
       toast.success("Default accounts created");
       load();
-    } catch (err: any) {
-      toast.error(err.message ?? "Setup failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Setup failed"));
     } finally {
       setSetting(false);
     }

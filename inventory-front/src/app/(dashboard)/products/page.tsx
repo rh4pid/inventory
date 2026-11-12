@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import type { Product } from "@/Types";
 
 export default function ProductsPage() {
@@ -46,8 +46,8 @@ export default function ProductsPage() {
       });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to load products");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to load products"));
     } finally {
       setLoading(false);
     }
@@ -63,8 +63,8 @@ export default function ProductsPage() {
       toast.success("Product deleted");
       setDeleteId(null);
       load();
-    } catch (err: any) {
-      toast.error(err.message ?? "Delete failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Delete failed"));
     } finally {
       setDeleting(false);
     }

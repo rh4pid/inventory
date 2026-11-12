@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useBusiness } from "@/context/BusinessContext";
@@ -36,8 +37,8 @@ export default function OverviewPage() {
     setError(null);
     try {
       setData(await dashboardApi.get(bizId, { shopId: locationId ?? undefined, period }));
-    } catch (err: any) {
-      setError(err.message ?? "Could not load the dashboard");
+    } catch (err) {
+      setError(errorMessage(err, "Could not load the dashboard"));
     }
   }, [bizId, locationId, period]);
 

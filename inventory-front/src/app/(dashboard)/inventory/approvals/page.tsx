@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, X } from "lucide-react";
@@ -31,7 +32,7 @@ export default function ApprovalsPage() {
     if (!activeBusiness) return;
     try {
       setList(await requestsApi.list(activeBusiness.businessId, filter === "ALL" ? undefined : filter));
-    } catch (err: any) { toast.error(err.message); setList([]); }
+    } catch (err) { toast.error(errorMessage(err)); setList([]); }
   }, [activeBusiness, filter]);
 
   useEffect(() => { load(); }, [load]);
@@ -52,8 +53,8 @@ export default function ApprovalsPage() {
       else await requestsApi.cancel(id, r.id);
       toast.success(kind === "approve" ? "Approved: stock updated" : kind === "reject" ? "Rejected" : "Request cancelled");
       load();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(errorMessage(err));
     } finally {
       setBusyId(null);
     }

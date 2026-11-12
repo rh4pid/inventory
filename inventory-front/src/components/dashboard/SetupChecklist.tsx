@@ -84,7 +84,7 @@ export function SetupChecklist({ hasStock }: { hasStock: boolean }) {
                 s.done ? "border-transparent bg-surface-2/60" : "border-line bg-surface hover:border-brand/40 hover:bg-brand-soft/40",
                 next?.key === s.key && "border-brand/40 ring-2 ring-brand/15")}>
               <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-semibold",
-                s.done ? "bg-brand text-white" : "bg-surface-2 text-ink-2")}>
+                s.done ? "bg-brand-strong text-white" : "bg-surface-2 text-ink-2")}>
                 {s.done ? <Check className="h-4 w-4" /> : i + 1}
               </span>
               <span className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,7 +40,7 @@ export default function StockCountsPage() {
       ]);
       setList(counts);
       setShops(shopRes.content);
-    } catch (err: any) { toast.error(err.message); setList([]); }
+    } catch (err) { toast.error(errorMessage(err)); setList([]); }
   }, [activeBusiness]);
 
   useEffect(() => { load(); }, [load]);
@@ -50,8 +51,8 @@ export default function StockCountsPage() {
     try {
       const v = await countsApi.start(activeBusiness.businessId, Number(shopId), notes.trim() || undefined);
       router.push(`/inventory/counts/${v.count.id}`);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(errorMessage(err));
       setBusy(false);
     }
   };

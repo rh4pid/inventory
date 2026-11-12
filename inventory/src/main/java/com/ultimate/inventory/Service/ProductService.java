@@ -91,8 +91,7 @@ public class ProductService {
         accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
         if (search != null && !search.isBlank()) {
-            return productRepo.findByBusinessAndProductNameContainingIgnoreCaseAndDeletedFalse(
-                    business, search, pageable);
+            return productRepo.search(business, search.trim(), pageable);
         }
         return productRepo.findByBusinessAndDeletedFalse(business, pageable);
     }

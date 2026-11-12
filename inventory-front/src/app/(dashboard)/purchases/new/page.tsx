@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { purchases as purchasesApi, products as productsApi, suppliers as suppliersApi, shops as shopsApi, units as unitsApi } from "@/lib/api";
+import { purchases as purchasesApi, suppliers as suppliersApi, shops as shopsApi, units as unitsApi } from "@/lib/api";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { ProductPicker } from "@/components/shared/ProductPicker";
 import { fmtQty } from "@/constants/Inventory";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import { PAYMENT_METHODS } from "@/constants/Strings";
 import type { Product, ProductUnit, Supplier, Shop, PurchaseItemPayload, PaymentMethod } from "@/Types";
 
@@ -28,7 +29,6 @@ interface LineItem {
 export default function NewPurchasePage() {
   const router = useRouter();
   const { activeBusiness } = useBusiness();
-  const [prods, setProds] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [lines, setLines] = useState<LineItem[]>([]);
@@ -37,28 +37,24 @@ export default function NewPurchasePage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [selProduct, setSelProduct] = useState<string>("");
   const { settings } = useBusinessSettings();
 
   useEffect(() => {
     if (!activeBusiness) return;
     const id = activeBusiness.businessId;
     Promise.all([
-      productsApi.list(id, { size: 100 }),
-      suppliersApi.list(id, { size: 100 }),
+      suppliersApi.list(id, { size: 200 }),
       shopsApi.list(id, { mine: true }),
-    ]).then(([p, s, sh]) => {
-      setProds(p.content);
+    ]).then(([s, sh]) => {
       setSuppliers(s.content);
       setShops(sh.content);
       if (sh.content[0]) setShopId(sh.content[0].id);
     }).catch(() => {});
   }, [activeBusiness]);
 
-  const addLine = async () => {
-    if (!selProduct || !activeBusiness) return;
-    const product = prods.find((p) => String(p.id) === selProduct);
-    if (!product) return;
+  // Picked from a server-side search, so any size of catalogue works.
+  const addLine = async (product: Product | null) => {
+    if (!product || !activeBusiness) return;
     if (lines.find((l) => l.product.id === product.id)) return;
     let packs: ProductUnit[] = [];
     if (settings?.multipleUnits) {
@@ -67,7 +63,6 @@ export default function NewPurchasePage() {
     setLines((prev) => [...prev, {
       product, quantity: 1, unitPrice: product.costPrice ?? 0, unitId: "", packs, batchNumber: "", expiryDate: "",
     }]);
-    setSelProduct("");
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -124,8 +119,8 @@ export default function NewPurchasePage() {
       });
       toast.success("Purchase recorded");
       router.push("/purchases");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create purchase");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to create purchase"));
     } finally {
       setSubmitting(false);
     }
@@ -180,17 +175,10 @@ export default function NewPurchasePage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Line Items</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Select value={selProduct} onValueChange={setSelProduct}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder="Select product to add" /></SelectTrigger>
-                <SelectContent>
-                  {prods.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.productName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={addLine} disabled={!selProduct}>
-                <Plus className="h-4 w-4" /> Add
-              </Button>
-            </div>
+            {activeBusiness && (
+              <ProductPicker businessId={activeBusiness.businessId} value={null} onChange={addLine} clearOnPick
+                placeholder="Add a product: type its name, SKU or scan a barcode…" />
+            )}
 
             {lines.length > 0 && (
               <div className="space-y-2">

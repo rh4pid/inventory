@@ -11,8 +11,8 @@ export function Panel({ tone = "plain", className, children, ...rest }: {
       className={cn(
         "relative overflow-hidden rounded-4xl p-5 md:p-6",
         tone === "plain" && "border border-line/80 bg-surface shadow-card",
-        tone === "blue" && "bg-brand text-white shadow-[0_18px_40px_-20px_rgb(53_99_233/0.9)]",
-        tone === "orange" && "bg-accent text-ink shadow-[0_18px_40px_-20px_rgb(242_98_46/0.9)]",
+        tone === "blue" && "bg-brand-strong text-white shadow-[var(--shadow-brand-lg)]",
+        tone === "orange" && "bg-accent text-on-accent shadow-[var(--shadow-accent-lg)]",
         className
       )}
       {...rest}
@@ -33,11 +33,11 @@ export function PanelHeader({ title, subtitle, href, linkLabel, tone = "plain", 
   return (
     <div className="relative z-10 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className={cn("text-xl font-semibold tracking-tight", tone === "plain" ? "text-ink" : tone === "blue" ? "text-white" : "text-ink")}>
+        <h2 className={cn("text-xl font-semibold tracking-tight", tone === "plain" ? "text-ink" : tone === "blue" ? "text-white" : "text-on-accent")}>
           {title}
         </h2>
         {subtitle && (
-          <p className={cn("mt-0.5 text-[13px]", tone === "blue" ? "text-white/80" : tone === "orange" ? "text-ink/75" : "text-ink-3")}>
+          <p className={cn("mt-0.5 text-[13px]", tone === "blue" ? "text-white/80" : tone === "orange" ? "text-on-accent/75" : "text-ink-3")}>
             {subtitle}
           </p>
         )}
@@ -51,7 +51,7 @@ export function PanelHeader({ title, subtitle, href, linkLabel, tone = "plain", 
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2",
               tone === "blue" && "bg-white/15 text-white hover:bg-white/25 focus-visible:ring-white",
-              tone === "orange" && "bg-white/25 text-ink hover:bg-white/40 focus-visible:ring-ink",
+              tone === "orange" && "bg-white/25 text-on-accent hover:bg-white/40 focus-visible:ring-on-accent",
               tone === "plain" && "bg-surface-2 text-ink-2 hover:text-ink focus-visible:ring-brand"
             )}
           >

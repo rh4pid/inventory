@@ -14,6 +14,11 @@
   --brand-orange: #f2622e;
   --brand-orange-deep: #d9481a;
   --brand-orange-soft: #fde9e1;
+  /* Solid fills that carry white text (buttons, big cards); a shade deeper where needed. */
+  --brand-strong: #3563e9;
+  /* Text on accent fills (navy or white, whichever reads better for the theme). */
+  --on-accent: #1c2541;
+  /* The brand blue/orange names are historical: they hold each theme's main and accent colours (lib/themes.ts). */
 
   /* Ink & surfaces */
   --ink: #1c2541;          /* primary text, never black */
@@ -60,6 +65,8 @@
   --color-brand: var(--brand-blue);
   --color-brand-deep: var(--brand-blue-deep);
   --color-brand-soft: var(--brand-blue-soft);
+  --color-brand-strong: var(--brand-strong);
+  --color-on-accent: var(--on-accent);
   --color-accent: var(--brand-orange);
   --color-accent-deep: var(--brand-orange-deep);
   --color-accent-soft: var(--brand-orange-soft);
@@ -75,9 +82,10 @@
 
 /* Warm, navy-tinted neutrals instead of Tailwind's gray (whose 900/950 read as black). */
 @theme {
-  --color-gray-50: #f8f6f3;
-  --color-gray-100: #f1ede8;
-  --color-gray-200: #e6e0d8;
+  /* Light greys follow the theme's tint; darker ones stay navy neutrals (no black). */
+  --color-gray-50: var(--frame);
+  --color-gray-100: var(--surface-2);
+  --color-gray-200: var(--line);
   --color-gray-300: #d4cdc3;
   --color-gray-400: #a2a6b5;
   --color-gray-500: #6e7690;
@@ -90,27 +98,32 @@
   --color-slate-950: #161d36;
   --color-black: #1c2541;
 
-  /* Tailwind blue → the brand blue, so existing buttons and links match. */
-  --color-blue-50: #eef2fe;
-  --color-blue-100: #dde6fd;
-  --color-blue-200: #bccdfa;
-  --color-blue-300: #8eabf5;
-  --color-blue-400: #5f86ef;
-  --color-blue-500: #4673ec;
-  --color-blue-600: #3563e9;
-  --color-blue-700: #2447c7;
-  --color-blue-800: #1f3a9e;
-  --color-blue-900: #1d327c;
+  /* Tailwind blue → the theme's main colour, so existing buttons and links follow the theme. */
+  --color-blue-50: color-mix(in srgb, var(--brand-blue) 7%, white);
+  --color-blue-100: color-mix(in srgb, var(--brand-blue) 14%, white);
+  --color-blue-200: color-mix(in srgb, var(--brand-blue) 28%, white);
+  --color-blue-300: color-mix(in srgb, var(--brand-blue) 50%, white);
+  --color-blue-400: color-mix(in srgb, var(--brand-blue) 75%, white);
+  --color-blue-500: color-mix(in srgb, var(--brand-blue) 90%, white);
+  --color-blue-600: var(--brand-strong);
+  --color-blue-700: var(--brand-blue-deep);
+  --color-blue-800: color-mix(in srgb, var(--brand-blue-deep) 80%, #1c2541);
+  --color-blue-900: color-mix(in srgb, var(--brand-blue-deep) 60%, #1c2541);
 
   --radius-4xl: 2rem;
   --shadow-card: 0 1px 2px rgb(28 37 65 / 0.04), 0 8px 24px -12px rgb(28 37 65 / 0.12);
   --shadow-float: 0 12px 40px -12px rgb(28 37 65 / 0.25);
+  --shadow-brand: 0 6px 16px -8px color-mix(in srgb, var(--brand-blue) 80%, transparent);
+  --shadow-accent: 0 6px 16px -8px color-mix(in srgb, var(--brand-orange) 85%, transparent);
+  --shadow-brand-lg: 0 18px 40px -20px color-mix(in srgb, var(--brand-blue) 90%, transparent);
+  --shadow-accent-lg: 0 18px 40px -20px color-mix(in srgb, var(--brand-orange) 90%, transparent);
 }
 
 * { box-sizing: border-box; }
 
 body {
   background: var(--canvas);
+  transition: background-color .3s ease;
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -120,9 +133,9 @@ body {
 /* The soft orange/blue glow behind the frame, as in the sample (light version). */
 .app-canvas {
   background:
-    radial-gradient(60rem 30rem at -10% -20%, rgb(242 98 46 / 0.28), transparent 60%),
-    radial-gradient(50rem 26rem at 110% 120%, rgb(53 99 233 / 0.22), transparent 60%),
-    radial-gradient(40rem 20rem at 50% 115%, rgb(242 98 46 / 0.16), transparent 70%),
+    radial-gradient(60rem 30rem at -10% -20%, color-mix(in srgb, var(--brand-orange) 28%, transparent), transparent 60%),
+    radial-gradient(50rem 26rem at 110% 120%, color-mix(in srgb, var(--brand-blue) 22%, transparent), transparent 60%),
+    radial-gradient(40rem 20rem at 50% 115%, color-mix(in srgb, var(--brand-orange) 16%, transparent), transparent 70%),
     var(--canvas);
 }
 

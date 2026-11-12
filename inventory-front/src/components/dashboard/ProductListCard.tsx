@@ -16,9 +16,9 @@ const ALL = "__all";
 const PAGE = 8;
 
 const DEMAND: Record<Row["demand"], { label: string; cls: string; hint: string }> = {
-  HIGH: { label: "High", cls: "bg-brand text-white", hint: "Among the top 30% of sellers this period" },
+  HIGH: { label: "High", cls: "bg-brand-strong text-white", hint: "Among the top 30% of sellers this period" },
   NORMAL: { label: "Normal", cls: "bg-surface-2 text-ink-2", hint: "Sold this period" },
-  LOW: { label: "Low", cls: "bg-accent text-white", hint: "No sales this period" },
+  LOW: { label: "Low", cls: "bg-accent text-on-accent", hint: "No sales this period" },
 };
 
 const STOCK: Record<Row["stockStatus"], string> = { IN: "In stock", LOW: "Low stock", OUT: "Out of stock", DEAD: "Dead stock" };
@@ -117,7 +117,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
               <Download className="h-4 w-4" />
             </button>
             {can("MANAGE_CATALOG") && <Link href="/products/new" aria-label="Add product" title="Add product"
-              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-[0_6px_16px_-8px_rgb(242_98_46/0.9)] hover:bg-accent-deep">
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-on-accent shadow-[var(--shadow-accent)] hover:bg-accent-deep">
               <Plus className="h-5 w-5" />
             </Link>}
           </div>

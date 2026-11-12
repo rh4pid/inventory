@@ -14,12 +14,19 @@ import java.util.Date;
 @Service
 public class SettingsService {
 
+    /** Theme ids the app knows (kept in step with inventory-front/src/lib/themes.ts). */
+    public static final java.util.Set<String> THEMES = java.util.Set.of("market", "care", "fresh", "depot", "workshop", "bistro");
+
     private final BusinessSettingsRepository settingsRepo;
     private final BusinessAccessHelper accessHelper;
 
-    public SettingsService(BusinessSettingsRepository settingsRepo, BusinessAccessHelper accessHelper) {
+    private final com.ultimate.inventory.Repository.BusinessRepository businessRepo;
+
+    public SettingsService(BusinessSettingsRepository settingsRepo, BusinessAccessHelper accessHelper,
+                           com.ultimate.inventory.Repository.BusinessRepository businessRepo) {
         this.settingsRepo = settingsRepo;
         this.accessHelper = accessHelper;
+        this.businessRepo = businessRepo;
     }
 
     @Transactional
@@ -48,6 +55,12 @@ public class SettingsService {
         if (dto.getMultipleUnits() != null) s.setMultipleUnits(dto.getMultipleUnits());
         if (dto.getAllowNegativeStock() != null) s.setAllowNegativeStock(dto.getAllowNegativeStock());
         if (dto.getRequireAdjustmentApproval() != null) s.setRequireAdjustmentApproval(dto.getRequireAdjustmentApproval());
+        if (dto.getTheme() != null) {
+            String t = dto.getTheme().trim().toLowerCase();
+            if (t.isEmpty() || t.equals("auto")) s.setTheme(null);
+            else if (THEMES.contains(t)) s.setTheme(t);
+            else throw new com.ultimate.inventory.Exception.AppException(org.springframework.http.HttpStatus.BAD_REQUEST, "Unknown theme: " + t);
+        }
         // Expiry dates live on batches: switching batches off switches expiry off,
         // and switching expiry on switches batches on.
         if (Boolean.FALSE.equals(dto.getTrackBatches())) s.setTrackExpiry(false);
@@ -57,6 +70,42 @@ public class SettingsService {
         s.setUpdatedAt(new Date());
         return settingsRepo.save(s);
     }
+
+    public com.ultimate.inventory.Controller.SettingsController.BusinessProfile getProfile(Long businessId, String userEmail) {
+        accessHelper.requireMembership(businessId, userEmail);
+        return profile(accessHelper.requireBusiness(businessId));
+    }
+
+    @Transactional
+    public com.ultimate.inventory.Controller.SettingsController.BusinessProfile updateProfile(
+            Long businessId, com.ultimate.inventory.Controller.SettingsController.BusinessProfile body, String userEmail) {
+        accessHelper.requireCapability(businessId, userEmail, com.ultimate.inventory.Constants.Capability.MANAGE_SETTINGS);
+        Business b = accessHelper.requireBusiness(businessId);
+        if (body.name() == null || body.name().isBlank()) {
+            throw new com.ultimate.inventory.Exception.AppException(org.springframework.http.HttpStatus.BAD_REQUEST, "Business name is required");
+        }
+        String newEmail = body.email() == null || body.email().isBlank() ? null : UserAccounts.normalizeEmail(body.email());
+        if (newEmail != null) {
+            Business other = businessRepo.findByBusinessEmail(newEmail);
+            if (other != null && !other.getId().equals(b.getId())) {
+                throw new com.ultimate.inventory.Exception.AppException(org.springframework.http.HttpStatus.CONFLICT, "Another company already uses " + newEmail);
+            }
+        }
+        b.setName(body.name().trim());
+        b.setBusinessEmail(newEmail);
+        b.setBusinessContact(blank(body.contact()));
+        b.setBusinessSecondaryContact(blank(body.secondaryContact()));
+        b.setUpdatedBy(userEmail);
+        b.setUpdatedAt(new Date());
+        return profile(businessRepo.save(b));
+    }
+
+    private static com.ultimate.inventory.Controller.SettingsController.BusinessProfile profile(Business b) {
+        return new com.ultimate.inventory.Controller.SettingsController.BusinessProfile(b.getId(), b.getName(), b.getCode(),
+                b.getBusinessEmail(), b.getBusinessContact(), b.getBusinessSecondaryContact(), b.getBusinessLogo());
+    }
+
+    private static String blank(String s) { return s == null || s.isBlank() ? null : s.trim(); }
 
     /** Settings for a business, created with defaults on first access. Performs no access check. */
     @Transactional

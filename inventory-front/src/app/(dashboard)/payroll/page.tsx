@@ -6,7 +6,7 @@ import { Plus, UserX, Pencil } from "lucide-react";
 import { employees as employeesApi } from "@/lib/api";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Employee } from "@/Types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +36,7 @@ export default function PayrollPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [bizId]);
+  useEffect(() => { load(); }, [bizId]); // eslint-disable-line react-hooks/exhaustive-deps -- load is recreated each render; reload only when the business changes
 
   const handleTerminate = async () => {
     if (!terminateId) return;
@@ -46,8 +46,8 @@ export default function PayrollPage() {
       toast.success("Employee terminated");
       setTerminateId(null);
       load();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to terminate");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to terminate"));
     } finally {
       setTerminating(false);
     }

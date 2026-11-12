@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { admin as adminApi, settings as settingsApi } from "@/lib/api";
@@ -46,8 +47,8 @@ export function CreateCompanyDialog({ open, onClose, onCreated }: {
       setResult(r);
       onCreated();
       toast.success(`${r.company.name} created`);
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not create the company");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not create the company"));
     } finally {
       setBusy(false);
     }

@@ -1,7 +1,9 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { inventory as invApi, units as unitsApi } from "@/lib/api";
+import { inventory as invApi, units as unitsApi, products as productsApi } from "@/lib/api";
+import { ProductPicker } from "@/components/shared/ProductPicker";
 import { ADJUSTMENT_REASONS, STOCK_OUT_REASONS, fmtQty } from "@/constants/Inventory";
 import { formatDate } from "@/components/inventory/BatchStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,8 @@ interface Props {
   onClose: () => void;
   onDone: () => void;
   businessId: number;
-  products: Product[];
+  /** Optional: products already loaded (only used to name a preset product quickly). */
+  products?: Product[];
   shops: Shop[];
   /** Where a transfer may go; defaults to {@link shops}. */
   destinations?: Shop[];
@@ -55,6 +58,7 @@ export function StockActionDialog({
   multipleUnits, trackBatches, trackExpiry, needsApproval,
 }: Props) {
   const [productId, setProductId] = useState(preset?.productId ? String(preset.productId) : "");
+  const [picked, setPicked] = useState<Product | null>(null);
   const [shopId, setShopId] = useState(preset?.shopId ? String(preset.shopId) : "");
   const [toShopId, setToShopId] = useState("");
   const [unit, setUnit] = useState(BASE);
@@ -92,10 +96,16 @@ export function StockActionDialog({
 
   // Prefilled product/location (e.g. opened from the batch list): load once on open.
   useEffect(() => {
-    if (preset?.productId) loadFor(String(preset.productId), preset.shopId ? String(preset.shopId) : "");
-  }, [preset, loadFor]);
+    if (!preset?.productId) return;
+    loadFor(String(preset.productId), preset.shopId ? String(preset.shopId) : "");
+    const known = products?.find((p) => p.id === preset.productId);
+    if (known) setPicked(known);
+    else productsApi.get(businessId, preset.productId).then(setPicked).catch(() => {});
+  }, [preset, loadFor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const chooseProduct = (id: string) => {
+  const chooseProduct = (p: Product | null) => {
+    setPicked(p);
+    const id = p ? String(p.id) : "";
     setProductId(id); setUnit(BASE); setBatchId(AUTO); setPacks([]); setBatches([]);
     loadFor(id, shopId);
   };
@@ -104,7 +114,7 @@ export function StockActionDialog({
     loadFor(productId, id);
   };
 
-  const product = products.find((p) => String(p.id) === productId);
+  const product = picked ?? undefined;
   const baseName = product?.unit?.name ?? "units";
   const pack = packs.find((p) => String(p.unit.id) === unit);
   const batch = batches.find((b) => String(b.id) === batchId);
@@ -163,8 +173,8 @@ export function StockActionDialog({
       }
       onDone();
       onClose();
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not save");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not save"));
     } finally {
       setSaving(false);
     }
@@ -184,12 +194,7 @@ export function StockActionDialog({
           )}
           <div className="space-y-1.5">
             <Label>Product *</Label>
-            <Select value={productId} onValueChange={chooseProduct}>
-              <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-              <SelectContent>
-                {products.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.productName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <ProductPicker businessId={businessId} value={picked} onChange={chooseProduct} placeholder="Search name, SKU or barcode…" />
           </div>
 
           <div className={action === "transfer" ? "grid grid-cols-2 gap-3" : ""}>

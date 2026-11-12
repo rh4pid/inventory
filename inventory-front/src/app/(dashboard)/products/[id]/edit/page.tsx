@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
@@ -76,7 +77,7 @@ export default function EditProductPage() {
         discountValue: product.discountValue,
       });
       setCats(catList);
-    }).catch((err: Error) => toast.error(err.message ?? "Load failed"))
+    }).catch((err: Error) => toast.error(errorMessage(err, "Load failed")))
       .finally(() => setLoading(false));
   }, [activeBusiness, params.id, reset]);
 
@@ -97,8 +98,8 @@ export default function EditProductPage() {
       }
       toast.success("Product updated");
       router.push("/products");
-    } catch (err: any) {
-      toast.error(err.message ?? "Update failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Update failed"));
     }
   };
 

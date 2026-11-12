@@ -8,7 +8,7 @@ const REFRESH_COOKIE = "_ultimate_";
  * Coarse guard on the session cookie; the backend checks every request properly.
  * Public sign-up is closed: companies are created by the super admin, people by their admin.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasCookie = !!request.cookies.get(REFRESH_COOKIE);
 

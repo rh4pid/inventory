@@ -1,4 +1,3 @@
-import type { UserRole } from "@/Types";
 
 export type ApiResponse<T> = {
   data: T;

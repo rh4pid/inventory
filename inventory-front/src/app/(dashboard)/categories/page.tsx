@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,8 +44,8 @@ export default function CategoriesPage() {
     try {
       const list = await catsApi.list(activeBusiness.businessId);
       setCats(list);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(errorMessage(err));
     } finally { setLoading(false); }
   }, [activeBusiness]);
 
@@ -61,7 +62,7 @@ export default function CategoriesPage() {
       reset();
       setOpen(false);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const handleDelete = async () => {
@@ -72,7 +73,7 @@ export default function CategoriesPage() {
       toast.success("Deleted");
       setDeleteId(null);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setDeleting(false);
   };
 

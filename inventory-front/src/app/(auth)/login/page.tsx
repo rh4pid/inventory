@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { LogoMark } from "@/components/layout/Logo";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,8 +32,8 @@ export default function LoginPage() {
     try {
       const u = await login(data);
       router.push(u.superAdmin ? "/admin" : "/overview");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Login failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Login failed"));
     }
   };
 

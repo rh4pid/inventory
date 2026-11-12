@@ -8,10 +8,10 @@ import { Panel, PanelHeader } from "./Panel";
 type Order = DashboardData["recentOrders"][number];
 
 const STATUS: Record<Order["status"], { label: string; cls: string }> = {
-  SOLD: { label: "Sold", cls: "bg-brand text-white" },
-  RECEIVED: { label: "Received", cls: "bg-brand text-white" },
-  PART_RETURNED: { label: "Part returned", cls: "bg-accent text-white" },
-  RETURNED: { label: "Returned", cls: "bg-accent text-white" },
+  SOLD: { label: "Sold", cls: "bg-brand-strong text-white" },
+  RECEIVED: { label: "Received", cls: "bg-brand-strong text-white" },
+  PART_RETURNED: { label: "Part returned", cls: "bg-accent text-on-accent" },
+  RETURNED: { label: "Returned", cls: "bg-accent text-on-accent" },
   VOID: { label: "Void", cls: "border border-line bg-surface text-ink-2" },
 };
 

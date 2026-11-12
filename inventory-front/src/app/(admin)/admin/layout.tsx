@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <DropdownMenuTrigger asChild>
                 <button aria-label="Your account" className="flex items-center gap-2.5 rounded-2xl border border-line bg-surface py-1.5 pl-1.5 pr-3 shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   <Avatar className="h-8 w-8 rounded-xl">
-                    <AvatarFallback className="rounded-xl bg-gradient-to-br from-accent to-accent-deep text-xs font-semibold text-white">SA</AvatarFallback>
+                    <AvatarFallback className="rounded-xl bg-gradient-to-br from-accent to-accent-deep text-xs font-semibold text-on-accent">SA</AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium text-ink sm:inline">Super admin</span>
                 </button>

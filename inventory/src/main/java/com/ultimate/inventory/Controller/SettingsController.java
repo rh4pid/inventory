@@ -67,6 +67,23 @@ public class SettingsController {
         return ResponseEntity.ok(settingsService.updateSettings(businessId, dto, email));
     }
 
+    // ── Business profile (name and contact details) ─────────────────────────
+
+    public record BusinessProfile(Long id, String name, String code, String email, String contact,
+                                  String secondaryContact, String logo) {}
+
+    @GetMapping("/businesses/{businessId}/profile")
+    public ResponseEntity<?> getProfile(@PathVariable Long businessId, @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(settingsService.getProfile(businessId, email));
+    }
+
+    /** Owners and admins update the company's name and contact details. */
+    @PutMapping("/businesses/{businessId}/profile")
+    public ResponseEntity<?> updateProfile(@PathVariable Long businessId, @RequestBody BusinessProfile body,
+                                           @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(settingsService.updateProfile(businessId, body, email));
+    }
+
     // ── Units of measure ─────────────────────────────────────────────────────
 
     @GetMapping("/businesses/{businessId}/units")

@@ -10,7 +10,7 @@ import type {
   StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
   InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
-  Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
+  BusinessProfile, Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -100,6 +100,9 @@ export const settings = {
   update: (businessId: number, data: BusinessSettingsPayload) =>
     req<BusinessSettings>(`/businesses/${businessId}/settings`, { method: "PUT", body: JSON.stringify(data) }),
   businessTypes: () => req<BusinessTypeOption[]>(`/reference/business-types`),
+  profile: (businessId: number) => req<BusinessProfile>(`/businesses/${businessId}/profile`),
+  updateProfile: (businessId: number, data: Omit<BusinessProfile, "id" | "code" | "logo">) =>
+    req<BusinessProfile>(`/businesses/${businessId}/profile`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 // ── Units of measure & product pack sizes ───────────────────────────────────

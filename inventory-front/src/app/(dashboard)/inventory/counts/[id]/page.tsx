@@ -1,4 +1,6 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -41,7 +43,7 @@ export default function StockCountPage() {
       setView(v);
       setProducts(p.content);
       setDrafts({});
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   }, [businessId, countId]);
 
   useEffect(() => { load(); }, [load]);
@@ -74,7 +76,7 @@ export default function StockCountPage() {
       setView(v);
       setDrafts({});
       return v;
-    } catch (err: any) { toast.error(err.message); return null; }
+    } catch (err) { toast.error(errorMessage(err)); return null; }
   };
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -87,20 +89,20 @@ export default function StockCountPage() {
     if (!v || !businessId) return;
     const uncounted = v.totalLines - v.countedLines;
     const action = v.canPost ? "Post this count and update stock" : "Submit this count to a manager";
-    const warn = uncounted > 0 ? `\n\n${uncounted} product(s) are not counted and will be left unchanged.` : "";
-    if (!window.confirm(`${action}?${warn}`)) return;
+    const warn = uncounted > 0 ? `${uncounted} product(s) are not counted and will be left unchanged.` : undefined;
+    if (!(await confirmAction({ title: `${action}?`, description: warn, confirmLabel: v.canPost ? "Post count" : "Submit" }))) return;
     try {
       const done = await countsApi.complete(businessId, countId);
       setView(done);
       toast.success(done.count.status === "POSTED" ? "Count posted: stock updated" : "Submitted for approval");
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   });
 
   const simple = (fn: (b: number, id: number) => Promise<StockCountView>, msg: string, confirmText?: string) =>
     run(async () => {
-      if (!businessId || (confirmText && !window.confirm(confirmText))) return;
+      if (!businessId || (confirmText && !(await confirmAction({ title: confirmText, tone: "danger" })))) return;
       try { setView(await fn(businessId, countId)); toast.success(msg); }
-      catch (err: any) { toast.error(err.message); }
+      catch (err) { toast.error(errorMessage(err)); }
     });
 
   const addProduct = () => run(async () => {
@@ -108,7 +110,7 @@ export default function StockCountPage() {
     try {
       setView(await countsApi.addProduct(businessId, countId, Number(addId)));
       setAddId("");
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   });
 
   if (!view) return <PageLoader />;

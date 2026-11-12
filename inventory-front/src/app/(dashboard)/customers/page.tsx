@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import type { Customer } from "@/Types";
 
 const schema = z.object({
@@ -52,7 +52,7 @@ export default function CustomersPage() {
       const res = await customersApi.list(activeBusiness.businessId, { page, size: SIZE });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness, page]);
 
@@ -66,7 +66,7 @@ export default function CustomersPage() {
       });
       toast.success("Customer added");
       reset(); setOpen(false); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const handleDelete = async () => {
@@ -76,7 +76,7 @@ export default function CustomersPage() {
       await customersApi.delete(activeBusiness.businessId, deleteId);
       toast.success("Customer deleted");
       setDeleteId(null); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setDeleting(false);
   };
 

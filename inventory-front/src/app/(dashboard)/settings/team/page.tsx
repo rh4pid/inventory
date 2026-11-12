@@ -1,11 +1,12 @@
 "use client";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
 import { KeyRound, MoreHorizontal, Pencil, Plus, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { shops as shopsApi, team as teamApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -70,7 +71,7 @@ export default function TeamPage() {
       setData(t);
       setLocations(s.content);
       setError(null);
-    } catch (err: any) { setError(err.message ?? "Could not load the team"); }
+    } catch (err) { setError(errorMessage(err, "Could not load the team")); }
   }, [bizId]);
 
   useEffect(() => { load(); }, [load]);
@@ -79,21 +80,21 @@ export default function TeamPage() {
   if (!data || !bizId) return <PageLoader />;
 
   const resetPassword = async (m: TeamMember) => {
-    if (!window.confirm(`Give ${m.name} a new temporary password? Their current password stops working.`)) return;
+    if (!(await confirmAction({ title: `Reset ${m.name}'s password?`, description: "They get a new temporary password. Their current password stops working and they're signed out.", confirmLabel: "Reset password", tone: "danger" }))) return;
     try {
       const r = await teamApi.resetPassword(bizId, m.id);
       setHandover(r);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const remove = async (m: TeamMember) => {
-    if (!window.confirm(`Remove ${m.name} from ${activeBusiness?.businessName}? They lose access straight away. Their past sales and stock records are kept.`)) return;
+    if (!(await confirmAction({ title: `Remove ${m.name} from ${activeBusiness?.businessName}?`, description: "They lose access straight away. Their past sales and stock records are kept.", confirmLabel: "Remove", tone: "danger" }))) return;
     try {
       await teamApi.remove(bizId, m.id);
       toast.success(`${m.name} removed`);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   return (
@@ -223,7 +224,7 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded 
         firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim(),
         phone: p.phone.trim() || undefined, role, shopIds: everywhere ? [] : shopIds,
       }));
-    } catch (err: any) { toast.error(err.message ?? "Could not add this person"); }
+    } catch (err) { toast.error(errorMessage(err, "Could not add this person")); }
     finally { setBusy(false); }
   };
 
@@ -271,7 +272,7 @@ function EditPersonDialog({ member, businessId, roles, locations, onClose, onSav
       await teamApi.update(businessId, member.id, { role, shopIds: everywhere ? [] : shopIds });
       toast.success(`${member.name} updated`);
       onSaved();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 

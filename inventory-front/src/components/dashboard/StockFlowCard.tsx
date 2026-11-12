@@ -71,7 +71,9 @@ export function StockFlowCard({ flow, attention, attentionTotal }: {
   const max = niceMax(Math.max(0, ...buckets.map((b) => Math.max(b.in, b.out))));
   const ticks = [max, max / 2, 0];
   const labelEvery = Math.max(1, Math.ceil(buckets.length / 7));
-  const shown = attention.slice(0, 4);
+  // One chip per product (a product can need attention for several batches).
+  const uniqueAttention = attention.filter((a, i) => attention.findIndex((b) => b.productId === a.productId) === i);
+  const shown = uniqueAttention.slice(0, 4);
   const h = hover != null ? buckets[hover] : null;
 
   return (

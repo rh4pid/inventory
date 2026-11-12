@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
@@ -76,8 +77,8 @@ export default function NewProductPage() {
       }
       toast.success("Product created");
       router.push("/products");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create product");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to create product"));
     }
   };
 

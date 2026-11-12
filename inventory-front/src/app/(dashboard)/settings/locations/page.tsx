@@ -1,4 +1,6 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, Users, X } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +36,7 @@ export default function LocationsSettingsPage() {
   const load = useCallback(async () => {
     if (!activeBusiness) return;
     try { setList((await shopsApi.list(activeBusiness.businessId)).content); }
-    catch (err: any) { toast.error(err.message); setList([]); }
+    catch (err) { toast.error(errorMessage(err)); setList([]); }
   }, [activeBusiness]);
 
   useEffect(() => { load(); }, [load]);
@@ -61,17 +63,17 @@ export default function LocationsSettingsPage() {
       toast.success("Location saved");
       setEditing(null);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setSaving(false); }
   };
 
   const remove = async (s: Shop) => {
-    if (!window.confirm(`Remove "${s.shopName}"? Its stock history is kept.`)) return;
+    if (!(await confirmAction({ title: `Remove ${s.shopName}?`, description: "Its stock history is kept.", confirmLabel: "Remove", tone: "danger" }))) return;
     try {
       await shopsApi.delete(s.id);
       toast.success("Location removed");
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   if (!list) return <PageLoader />;
@@ -178,7 +180,7 @@ function LocationStaffDialog({ businessId, shop, onClose }: { businessId: number
       ]);
       setAssigned(a);
       setMembers(m.content);
-    } catch (err: any) { toast.error(err.message); setAssigned([]); }
+    } catch (err) { toast.error(errorMessage(err)); setAssigned([]); }
   }, [businessId, shop.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -195,7 +197,7 @@ function LocationStaffDialog({ businessId, shop, onClose }: { businessId: number
       await shopsApi.assignStaff(businessId, shop.id, Number(pick));
       setPick("");
       await load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 
@@ -204,7 +206,7 @@ function LocationStaffDialog({ businessId, shop, onClose }: { businessId: number
     try {
       await shopsApi.unassignStaff(businessId, shop.id, a.id);
       await load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     finally { setBusy(false); }
   };
 

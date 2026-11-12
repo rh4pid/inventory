@@ -1,9 +1,10 @@
 "use client";
+import { confirmAction } from "@/context/ConfirmProvider";
 import { useEffect, useState } from "react";
 import { KeyRound, Pause, Play, Plus, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { admin as adminApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ export function CompanyDialog({ company: initial, onClose, onChanged }: {
   const apply = (next: Company) => { setC(next); onChanged(next); };
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
-    try { await fn(); } catch (err: any) { toast.error(err.message ?? "Something went wrong"); } finally { setBusy(false); }
+    try { await fn(); } catch (err) { toast.error(errorMessage(err, "Something went wrong")); } finally { setBusy(false); }
   };
 
   const dirty = form.name !== c.name || form.email !== (c.email ?? "") || form.contact !== (c.contact ?? "");
@@ -52,8 +53,8 @@ export function CompanyDialog({ company: initial, onClose, onChanged }: {
     });
   };
 
-  const reset = (membershipId: number, name: string) => {
-    if (!window.confirm(`Give ${name} a new temporary password? Their current password stops working and they're signed out.`)) return;
+  const reset = async (membershipId: number, name: string) => {
+    if (!(await confirmAction({ title: `Reset ${name}'s password?`, description: "They get a new temporary password. Their current password stops working and they're signed out.", confirmLabel: "Reset password", tone: "danger" }))) return;
     run(async () => {
       const r = await adminApi.resetAdminPassword(c.id, membershipId);
       apply(r.company);
@@ -75,7 +76,7 @@ export function CompanyDialog({ company: initial, onClose, onChanged }: {
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {c.name}
             <span className="font-mono text-xs font-normal text-ink-3">{c.code}</span>
-            <span className={cn("rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-white" : "bg-brand-soft text-brand-deep")}>
+            <span className={cn("rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-on-accent" : "bg-brand-soft text-brand-deep")}>
               {c.suspended ? "Suspended" : "Active"}
             </span>
           </DialogTitle>

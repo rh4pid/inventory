@@ -58,6 +58,10 @@ public class BusinessSettings extends Model {
     @Column(name = "allow_negative_stock")
     private Boolean allowNegativeStock = false;
 
+    /** Colour theme id chosen by the company admin (null = automatic, from the business type). */
+    @Column(name = "theme", length = 32)
+    private String theme;
+
     /** Adjustments / write-offs by non-managers need manager approval. */
     @Column(name = "require_adjustment_approval")
     private Boolean requireAdjustmentApproval = false;

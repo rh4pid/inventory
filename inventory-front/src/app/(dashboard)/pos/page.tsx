@@ -2,10 +2,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, X } from "lucide-react";
-import { products as productsApi, shops as shopsApi, sales as salesApi } from "@/lib/api";
+import { shops as shopsApi, sales as salesApi } from "@/lib/api";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Product, Shop, SalePayload, PaymentMethod } from "@/Types";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, errorMessage } from "@/lib/utils";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { CartLineOptions, addProduct, type CartLine } from "@/components/sales/CartLineOptions";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ export default function POSPage() {
   const { activeBusiness } = useBusiness();
   const bizId = activeBusiness?.businessId ?? 0;
 
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [shopId, setShopId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -33,22 +33,19 @@ export default function POSPage() {
   const trackExpiry = Boolean(settings?.trackExpiry);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashTendered, setCashTendered] = useState("");
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Products are searched on the server (name, SKU or scanned barcode), so any catalogue size works.
+  const { results: allProducts, total: productTotal, loading } = useProductSearch(bizId || undefined, search, 60);
 
   useEffect(() => {
     if (!bizId) return;
-    setLoading(true);
-    Promise.all([
-      productsApi.list(bizId, { size: 200 }),
-      shopsApi.list(bizId, { mine: true }),
-    ]).then(([p, s]) => {
-      setAllProducts(p.content);
-      const shopList = s.content ?? (s as any);
-      setShops(Array.isArray(shopList) ? shopList : []);
-      if (Array.isArray(shopList) && shopList.length > 0) setShopId(shopList[0].id);
-    }).catch(() => toast.error("Failed to load products"))
-      .finally(() => setLoading(false));
+    shopsApi.list(bizId, { mine: true })
+      .then((s) => {
+        setShops(s.content);
+        if (s.content.length > 0) setShopId(s.content[0].id);
+      })
+      .catch(() => toast.error("Failed to load your locations"));
   }, [bizId]);
 
   const categories = useMemo(() => {
@@ -56,11 +53,10 @@ export default function POSPage() {
     return ["All", ...names];
   }, [allProducts]);
 
-  const filtered = useMemo(() => allProducts.filter((p) => {
-    const matchCat = categoryFilter === "All" || p.category?.categoryName === categoryFilter;
-    const matchQ = !search || p.productName.toLowerCase().includes(search.toLowerCase()) || (p.sku ?? "").toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchQ;
-  }), [allProducts, categoryFilter, search]);
+  // The server already matched the search (name, SKU, barcode); only the category tab filters here.
+  const filtered = useMemo(() => allProducts.filter((p) =>
+    categoryFilter === "All" || (p.category?.categoryName ?? "Uncategorised") === categoryFilter
+  ), [allProducts, categoryFilter]);
 
   const addToCart = (product: Product) => setCart((prev) => addProduct(prev, product));
 
@@ -93,8 +89,8 @@ export default function POSPage() {
       toast.success(`Sale complete — ${invoice.invoiceNumber}`);
       setCart([]);
       setCashTendered("");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Sale failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Sale failed"));
     } finally {
       setSubmitting(false);
     }
@@ -107,11 +103,22 @@ export default function POSPage() {
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
           <Input
-            placeholder="Search product or SKU…"
+            placeholder="Search or scan a barcode…"
+            aria-label="Search products or scan a barcode"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              // A scanner types the code and presses Enter: one match goes straight into the cart.
+              if (e.key === "Enter" && search.trim() && filtered.length === 1 && !loading) {
+                addToCart(filtered[0]);
+                setSearch("");
+              }
+            }}
             className="max-w-xs"
           />
+          {!search && productTotal > allProducts.length && (
+            <span className="hidden text-xs text-ink-3 md:inline">Showing {allProducts.length} of {productTotal}. Search to find the rest.</span>
+          )}
           {shops.length > 1 && (
             <select
               className="text-sm border border-gray-200 rounded-md px-3 py-2 bg-white"

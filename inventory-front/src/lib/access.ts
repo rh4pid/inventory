@@ -38,6 +38,7 @@ export const PAGE_RULES: { prefix: string; need: Capability | Capability[] }[] =
   { prefix: "/settings/team", need: "MANAGE_TEAM" },
   { prefix: "/settings/features", need: "MANAGE_SETTINGS" },
   { prefix: "/settings/business", need: "MANAGE_SETTINGS" },
+  { prefix: "/settings/appearance", need: "MANAGE_SETTINGS" },
   { prefix: "/settings/accounts", need: "MANAGE_ACCOUNTS" },
   { prefix: "/settings/units", need: "MANAGE_CATALOG" },
   { prefix: "/settings/locations", need: "MANAGE_LOCATIONS" },

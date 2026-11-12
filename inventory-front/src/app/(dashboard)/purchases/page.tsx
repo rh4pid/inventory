@@ -11,7 +11,7 @@ import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, errorMessage } from "@/lib/utils";
 import { InvoiceDialog } from "@/components/shared/InvoiceDialog";
 import type { Invoice } from "@/Types";
 
@@ -32,7 +32,7 @@ export default function PurchasesPage() {
       const res = await purchasesApi.list(activeBusiness.businessId, { page, size: SIZE });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness, page]);
 

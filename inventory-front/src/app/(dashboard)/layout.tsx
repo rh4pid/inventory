@@ -10,6 +10,7 @@ import { Header } from "@/components/layout/Header";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { useAuth } from "@/context/AuthProvider";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import { ForcePasswordChange } from "@/components/account/ForcePasswordChange";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (user.mustChangePassword) return <ForcePasswordChange />;
 
   return (
+    <SettingsProvider>
     <WorkspaceProvider>
       <div className="app-canvas h-dvh p-0 md:p-4 lg:p-5">
         <div className="flex h-full overflow-hidden bg-frame md:rounded-4xl md:border md:border-white/70 md:shadow-float">
@@ -46,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-deep"><Lock className="h-5 w-5" /></span>
                   <h1 className="mt-4 text-lg font-semibold text-ink">Not available for your role</h1>
                   <p className="mt-1 text-sm text-ink-3">
-                    As {ROLE_LABEL[activeBusiness?.role ?? ""] ?? "a team member"}, you don't have access to this page. Ask a manager if you need it.
+                    As {ROLE_LABEL[activeBusiness?.role ?? ""] ?? "a team member"}, you don&apos;t have access to this page. Ask a manager if you need it.
                   </p>
                   <Link href="/overview" className="mt-5 inline-flex h-10 items-center rounded-xl bg-brand px-4 text-sm font-medium text-white hover:bg-brand-deep">Go to overview</Link>
                 </div>
@@ -56,5 +58,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     </WorkspaceProvider>
+    </SettingsProvider>
   );
 }

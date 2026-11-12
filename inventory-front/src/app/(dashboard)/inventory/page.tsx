@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -8,7 +9,7 @@ import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useCan, type Capability } from "@/lib/access";
-import { inventory as invApi, products as productsApi, suppliers as suppliersApi, shops as shopsApi, stockRequests as requestsApi } from "@/lib/api";
+import { inventory as invApi, suppliers as suppliersApi, shops as shopsApi, stockRequests as requestsApi } from "@/lib/api";
 import { MOVEMENT_LABELS, fmtQty, locationTypeLabel } from "@/constants/Inventory";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -19,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Inventory, Product, Supplier, Shop, StockBatch, StockMovement } from "@/Types";
+import type { Inventory, Supplier, Shop, StockBatch, StockMovement } from "@/Types";
 
 type View = "stock" | "batches" | "history";
 
@@ -35,7 +36,6 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<StockAction | null>(null);
   const [preset, setPreset] = useState<StockActionPreset | undefined>(undefined);
-  const [prods, setProds] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);       // locations this user works at
   const [allShops, setAllShops] = useState<Shop[]>([]); // every location (transfer destinations)
@@ -58,18 +58,17 @@ export default function InventoryPage() {
       setItems(inv.content);
       setMovements(mv.content);
       setBatches(bt);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   }, [businessId, trackBatches]);
 
   const load = useCallback(async () => {
     if (!businessId) return;
     setLoading(true);
     try {
-      const [low, shopRes, allShopRes, prodRes, supRes, exp, pending] = await Promise.all([
+      const [low, shopRes, allShopRes, supRes, exp, pending] = await Promise.all([
         invApi.lowStock(businessId),
         shopsApi.list(businessId, { mine: true }),
         shopsApi.list(businessId),
-        productsApi.list(businessId, { size: 200 }),
         // Only people who receive stock can see suppliers; others just don't get the list.
         suppliersApi.list(businessId, { size: 100 }).catch(() => ({ content: [] as Supplier[] })),
         trackExpiry ? invApi.expiring(businessId) : Promise.resolve([]),
@@ -78,7 +77,6 @@ export default function InventoryPage() {
       setLowStock(low);
       setShops(shopRes.content);
       setAllShops(allShopRes.content);
-      setProds(prodRes.content);
       setSuppliers(supRes.content);
       setExpiring(exp);
       setPendingApprovals(pending.count);
@@ -87,7 +85,7 @@ export default function InventoryPage() {
         setActiveShop(String(current.id));
         await loadShop(String(current.id));
       }
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
     // activeShop intentionally omitted: reloading keeps the current tab without re-triggering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,7 +362,6 @@ export default function InventoryPage() {
           onClose={() => setAction(null)}
           onDone={load}
           businessId={businessId}
-          products={prods}
           shops={shops}
           destinations={allShops}
           suppliers={suppliers}

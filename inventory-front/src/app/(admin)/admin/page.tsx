@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, MapPin, Package, Plus, RefreshCw, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { admin as adminApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Panel } from "@/components/dashboard/Panel";
@@ -30,7 +30,7 @@ export default function AdminConsolePage() {
   const load = useCallback(async () => {
     setError(null);
     try { setCompanies(await adminApi.companies()); }
-    catch (err: any) { setError(err.message ?? "Could not load companies"); }
+    catch (err) { setError(errorMessage(err, "Could not load companies")); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -140,7 +140,7 @@ export default function AdminConsolePage() {
                     <div className="truncate text-lg font-semibold text-ink">{c.name}</div>
                     <div className="text-xs text-ink-3"><span className="font-mono">{c.code}</span> · {c.businessTypeLabel ?? "—"}</div>
                   </div>
-                  <span className={cn("shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-white" : "bg-brand-soft text-brand-deep")}>
+                  <span className={cn("shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-on-accent" : "bg-brand-soft text-brand-deep")}>
                     {c.suspended ? "Suspended" : "Active"}
                   </span>
                 </div>

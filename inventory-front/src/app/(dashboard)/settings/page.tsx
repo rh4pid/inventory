@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, User, Bell, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound } from "lucide-react";
+import { BookOpen, User, Palette, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound } from "lucide-react";
 import { useCan, type Capability } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
@@ -57,10 +57,10 @@ const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: stri
     href: "/settings/profile",
   },
   {
-    icon: Bell,
-    title: "Notifications",
-    description: "Configure low-stock alerts and other notifications",
-    href: "/settings/notifications",
+    icon: Palette,
+    title: "Appearance",
+    description: "Your company's colour theme: pharmacy, warehouse, shop and more",
+    href: "/settings/appearance",
     need: "MANAGE_SETTINGS",
   },
 ];
