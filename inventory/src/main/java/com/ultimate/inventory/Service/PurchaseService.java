@@ -182,27 +182,6 @@ public class PurchaseService {
         return invoice;
     }
 
-    /** Voids an unpaid purchase and removes the stock it added (refused if already used). Managers only. */
-    @Transactional
-    public Invoice voidPurchase(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
-        Invoice invoice = getPurchase(businessId, invoiceId, userEmail);
-        if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
-            throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
-        }
-        if (invoice.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            throw new AppException(HttpStatus.CONFLICT,
-                    "Cannot void an invoice with payments.");
-        }
-        inventoryService.reversePurchase(invoice, detailRepo.findByInvoice(invoice), userEmail);
-        invoice.setInvoiceStatus(InvoiceStatus.VOID);
-        invoice.setPaymentStatus(PaymentStatus.VOID);
-        invoice.setUpdatedBy(userEmail);
-        invoice.setUpdatedAt(new Date());
-        log.info("Purchase voided: invoice={} by {}", invoice.getInvoiceNumber(), userEmail);
-        return invoiceRepo.save(invoice);
-    }
-
     private String generateInvoiceNumber(Business business, Long id) {
         return business.getCode() + "-PURCH-" + String.format("%08d", id);
     }

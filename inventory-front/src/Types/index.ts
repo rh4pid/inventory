@@ -372,6 +372,7 @@ export interface Invoice {
   taxAmount: string;
   totalAmount: string;
   amountPaid: string;
+  returnedAmount?: string;
   customer?: Customer;
   supplier?: Supplier;
   shop?: Shop;
@@ -504,4 +505,44 @@ export interface LocationStaff {
   name: string;
   email: string;
   role: UserRole;
+}
+
+export interface InvoiceLine {
+  id: number;
+  productId: number;
+  productName: string;
+  sku?: string;
+  quantity: number;
+  unitName?: string;        // pack size, if sold/bought in one
+  baseQuantity?: number;
+  returnedQuantity: number;
+  returnable: number;       // still possible to return (0 once void)
+  unitPrice: string;
+  totalLine: string;
+  batchInfo?: string;
+}
+
+export interface InvoicePaymentLine {
+  id: number;
+  amount: string;           // negative = refund
+  paymentMethod: PaymentMethod;
+  reference?: string;
+  notes?: string;
+  paidAt?: string;
+  performedBy?: string;
+}
+
+/** An invoice with its lines, payments, and what is still owed (negative = we owe them). */
+export interface InvoiceDetailView {
+  invoice: Invoice;
+  lines: InvoiceLine[];
+  payments: InvoicePaymentLine[];
+  returnedAmount: string;
+  balanceDue: string;
+}
+
+export interface ReturnPayload {
+  items: { detailId: number; quantity: number }[];
+  reason?: string;
+  refundMethod?: PaymentMethod;
 }

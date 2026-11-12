@@ -9,11 +9,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface JournalRepository extends JpaRepository<Journal, Long> {
     Page<Journal> findByBusiness(Business business, Pageable pageable);
     Page<Journal> findByShop(Shop shop, Pageable pageable);
+    List<Journal> findByBusinessAndReferenceAndStatus(Business business, String reference,
+                                                      com.ultimate.inventory.Constants.JournalStatus status);
     Optional<Journal> findBySourceIdAndTransactionType(Long sourceId, JournalTransactionType type);
 }

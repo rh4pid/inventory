@@ -448,66 +448,81 @@ public class InventoryService {
         return saved;
     }
 
+    /** Movement references used when stock comes back from (or goes back to) an invoice. */
+    public static String returnRef(Invoice invoice) { return "RET-" + invoice.getInvoiceNumber(); }
+    public static String voidRef(Invoice invoice)   { return "VOID-" + invoice.getInvoiceNumber(); }
+
     /**
-     * Puts back the stock a sale took, into the same batches. Falls back to the invoice lines
-     * for sales recorded before movements carried a reference.
+     * A customer brings back {@code quantity} base units of what a sale took. The stock goes back
+     * into the batches the sale took it from, minus whatever was already returned to each.
+     * Falls back to the sale's location for sales recorded before movements carried a reference.
      */
     @Transactional
-    public void reverseSale(Invoice invoice, List<InvoiceDetail> details, String by) {
-        Ctx ctx = new Ctx("Void of sale #" + invoice.getInvoiceNumber(), by, null,
-                "VOID-" + invoice.getInvoiceNumber(), Entered.NONE);
-        for (Map.Entry<Product, Double> e : baseQuantities(details).entrySet()) {
-            List<StockMovement> moves = movementRepo.findByReferenceCodeAndProductAndMovementTypeOrderByIdAsc(
-                    invoice.getInvoiceNumber(), e.getKey(), StockMovementType.SALE);
-            if (moves.isEmpty()) {
-                restore(e.getKey(), invoice.getShop(), e.getValue(), StockMovementType.SALE_RETURN, ctx, null);
-            } else {
-                for (StockMovement m : moves) {
-                    restore(e.getKey(), m.getShop(), -m.getQuantityChange(), StockMovementType.SALE_RETURN, ctx, m.getBatchId());
-                }
-            }
+    public void returnFromSale(Invoice invoice, Product product, double quantity, Ctx ctx) {
+        if (quantity <= 1e-9) return;
+        List<StockMovement> taken = movementRepo.findByReferenceCodeAndProductAndMovementTypeOrderByIdAsc(
+                invoice.getInvoiceNumber(), product, StockMovementType.SALE);
+        Map<Long, Double> already = byBatch(movementRepo.findByReferenceCodeInAndProductAndMovementType(
+                List.of(returnRef(invoice), voidRef(invoice)), product, StockMovementType.SALE_RETURN), 1);
+        double left = quantity;
+        for (StockMovement m : taken) {
+            if (left <= 1e-9) break;
+            double room = -m.getQuantityChange() - consume(already, m.getBatchId(), -m.getQuantityChange());
+            if (room <= 1e-9) continue;
+            double put = Math.min(room, left);
+            restore(product, m.getShop(), put, StockMovementType.SALE_RETURN, ctx, m.getBatchId());
+            left -= put;
+        }
+        if (left > 1e-9) {
+            // Legacy sale (no movement references) or rounding: put the rest back at the sale's location.
+            restore(product, invoice.getShop(), left, StockMovementType.SALE_RETURN, ctx, null);
         }
     }
 
     /**
-     * Removes the stock a purchase added, from the same batches. Fails (and changes nothing)
-     * if some of it has already been sold or moved.
+     * {@code quantity} base units of what a purchase brought in go back to the supplier, taken
+     * from the batches that purchase created. Fails (and changes nothing) if that stock has
+     * already been sold or moved.
      */
     @Transactional
-    public void reversePurchase(Invoice invoice, List<InvoiceDetail> details, String by) {
-        Ctx ctx = new Ctx("Void of purchase #" + invoice.getInvoiceNumber(), by, null,
-                "VOID-" + invoice.getInvoiceNumber(), Entered.NONE);
-        for (Map.Entry<Product, Double> e : baseQuantities(details).entrySet()) {
-            List<StockMovement> moves = movementRepo.findByReferenceCodeAndProductAndMovementTypeOrderByIdAsc(
-                    invoice.getInvoiceNumber(), e.getKey(), StockMovementType.STOCK_IN);
-            try {
-                if (moves.isEmpty()) {
-                    deduct(e.getKey(), invoice.getShop(), e.getValue(), StockMovementType.PURCHASE_RETURN, ctx, null);
-                } else {
-                    for (StockMovement m : moves) {
-                        deduct(e.getKey(), m.getShop(), m.getQuantityChange(), StockMovementType.PURCHASE_RETURN,
-                                ctx, m.getBatchId());
-                    }
-                }
-            } catch (AppException ex) {
-                throw new AppException(HttpStatus.CONFLICT, "Cannot void this purchase: some of the stock it " +
-                        "added has already been used. " + ex.getMessage());
+    public void returnToSupplier(Invoice invoice, Product product, double quantity, Ctx ctx) {
+        if (quantity <= 1e-9) return;
+        List<StockMovement> added = movementRepo.findByReferenceCodeAndProductAndMovementTypeOrderByIdAsc(
+                invoice.getInvoiceNumber(), product, StockMovementType.STOCK_IN);
+        Map<Long, Double> already = byBatch(movementRepo.findByReferenceCodeInAndProductAndMovementType(
+                List.of(returnRef(invoice), voidRef(invoice)), product, StockMovementType.PURCHASE_RETURN), -1);
+        double left = quantity;
+        try {
+            for (StockMovement m : added) {
+                if (left <= 1e-9) break;
+                double room = m.getQuantityChange() - consume(already, m.getBatchId(), m.getQuantityChange());
+                if (room <= 1e-9) continue;
+                double take = Math.min(room, left);
+                deduct(product, m.getShop(), take, StockMovementType.PURCHASE_RETURN, ctx, m.getBatchId());
+                left -= take;
             }
+            if (left > 1e-9) {
+                deduct(product, invoice.getShop(), left, StockMovementType.PURCHASE_RETURN, ctx, null);
+            }
+        } catch (AppException ex) {
+            throw new AppException(HttpStatus.CONFLICT, "Cannot send back '" + product.getProductName() +
+                    "': some of the stock this purchase added has already been used. " + ex.getMessage());
         }
     }
 
-    /** Base-unit quantity per product across invoice lines (a product may appear on several lines). */
-    private static Map<Product, Double> baseQuantities(List<InvoiceDetail> details) {
-        Map<Long, Product> products = new LinkedHashMap<>();
-        Map<Long, Double> qty = new LinkedHashMap<>();
-        for (InvoiceDetail d : details) {
-            products.putIfAbsent(d.getProduct().getId(), d.getProduct());
-            double q = d.getBaseQuantity() != null ? d.getBaseQuantity() : d.getQuantity();
-            qty.merge(d.getProduct().getId(), q, Double::sum);
-        }
-        Map<Product, Double> out = new LinkedHashMap<>();
-        products.forEach((id, p) -> out.put(p, qty.get(id)));
+    /** Sum of movement quantities per batch (null batch included), signed so returns count positive. */
+    private static Map<Long, Double> byBatch(List<StockMovement> moves, int sign) {
+        Map<Long, Double> out = new HashMap<>();
+        for (StockMovement m : moves) out.merge(m.getBatchId(), sign * m.getQuantityChange(), Double::sum);
         return out;
+    }
+
+    /** Takes up to {@code max} from the batch's already-returned tally and says how much it took. */
+    private static double consume(Map<Long, Double> tally, Long batchId, double max) {
+        double have = tally.getOrDefault(batchId, 0.0);
+        double used = Math.min(have, max);
+        if (used > 0) tally.put(batchId, have - used);
+        return Math.max(used, 0);
     }
 
     public boolean tracksBatches(Business business) {

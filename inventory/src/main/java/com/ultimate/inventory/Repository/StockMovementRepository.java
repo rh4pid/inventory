@@ -21,6 +21,11 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     java.util.List<StockMovement> findByReferenceCodeAndProductAndMovementTypeOrderByIdAsc(
             String referenceCode, Product product, com.ultimate.inventory.Constants.StockMovementType type);
 
+    /** Movements written under any of several references (e.g. all returns against one invoice). */
+    java.util.List<StockMovement> findByReferenceCodeInAndProductAndMovementType(
+            java.util.Collection<String> referenceCodes, Product product,
+            com.ultimate.inventory.Constants.StockMovementType type);
+
     /** Movement history for a business, optionally narrowed to one location and/or product. */
     @Query("SELECT m FROM StockMovement m WHERE m.shop.business = :business " +
            "AND (:shop IS NULL OR m.shop = :shop) " +

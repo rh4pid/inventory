@@ -123,6 +123,10 @@ public class AccountService {
         return accountRepo.save(account);
     }
 
+    public java.util.Optional<Account> findAccount(Business business, AccountPurpose purpose) {
+        return accountRepo.findByBusinessAndAccountPurpose(business, purpose);
+    }
+
     public Account findRequiredAccount(Business business, AccountPurpose purpose) {
         return accountRepo.findByBusinessAndAccountPurpose(business, purpose)
                 .orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST,

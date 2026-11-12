@@ -13,10 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/utils";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { CartLineOptions, addProduct, type CartLine } from "@/components/sales/CartLineOptions";
 import { PAYMENT_METHODS } from "@/constants/Strings";
 import type { Product, Customer, Shop, SaleItemPayload, PaymentMethod } from "@/Types";
-
-interface CartItem { product: Product; quantity: number; unitPrice: number; }
 
 export default function NewSalePage() {
   const router = useRouter();
@@ -24,7 +24,11 @@ export default function NewSalePage() {
   const [prods, setProds] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const { settings } = useBusinessSettings();
+  const multipleUnits = Boolean(settings?.multipleUnits);
+  const trackBatches = Boolean(settings?.trackBatches);
+  const trackExpiry = Boolean(settings?.trackExpiry);
   const [shopId, setShopId] = useState<number | null>(null);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
@@ -48,24 +52,14 @@ export default function NewSalePage() {
     }).catch(() => {});
   }, [activeBusiness]);
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing) {
-        return prev.map((i) => i.product.id === product.id
-          ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { product, quantity: 1, unitPrice: product.sellingPrice }];
-    });
+  const addToCart = (product: Product) => setCart((prev) => addProduct(prev, product));
+
+  const updateQty = (key: string, qty: number) => {
+    if (qty <= 0) setCart((prev) => prev.filter((i) => i.key !== key));
+    else setCart((prev) => prev.map((i) => i.key === key ? { ...i, quantity: qty } : i));
   };
 
-  const updateQty = (productId: number, qty: number) => {
-    if (qty <= 0) {
-      setCart((prev) => prev.filter((i) => i.product.id !== productId));
-    } else {
-      setCart((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: qty } : i));
-    }
-  };
+  const replaceLine = (line: CartLine) => setCart((prev) => prev.map((i) => i.key === line.key ? line : i));
 
   const subtotal = cart.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - discount);
@@ -90,6 +84,8 @@ export default function NewSalePage() {
         productId: i.product.id,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
+        unitId: i.unitId,
+        batchId: i.batchId,
       }));
       await salesApi.create(activeBusiness.businessId, {
         shopId,
@@ -166,31 +162,37 @@ export default function NewSalePage() {
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div key={item.product.id} className="flex items-center gap-2">
+                    <div key={item.key} className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate">{item.product.productName}</p>
-                        <p className="text-xs text-gray-400">{formatCurrency(item.unitPrice)} each</p>
+                        <p className="text-xs text-gray-400">{formatCurrency(item.unitPrice)} per {item.unitName ?? item.product.unit?.name ?? "unit"}</p>
+                        {activeBusiness && (
+                          <CartLineOptions
+                            businessId={activeBusiness.businessId} shopId={shopId} line={item} onChange={replaceLine} compact
+                            multipleUnits={multipleUnits} trackBatches={trackBatches} trackExpiry={trackExpiry}
+                          />
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => updateQty(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQty(item.key, item.quantity - 1)}
                           className="h-6 w-6 rounded border border-gray-300 flex items-center justify-center text-sm hover:bg-gray-50"
                         >−</button>
                         <input
                           type="number"
                           className="w-10 text-center text-sm border border-gray-300 rounded h-6 p-0"
                           value={item.quantity}
-                          onChange={(e) => updateQty(item.product.id, Number(e.target.value))}
+                          onChange={(e) => updateQty(item.key, Number(e.target.value))}
                         />
                         <button
-                          onClick={() => updateQty(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQty(item.key, item.quantity + 1)}
                           className="h-6 w-6 rounded border border-gray-300 flex items-center justify-center text-sm hover:bg-gray-50"
                         >+</button>
                       </div>
                       <p className="text-xs font-semibold w-16 text-right">
                         {formatCurrency(item.quantity * item.unitPrice)}
                       </p>
-                      <button onClick={() => updateQty(item.product.id, 0)} className="text-red-400 hover:text-red-600">
+                      <button onClick={() => updateQty(item.key, 0)} className="text-red-400 hover:text-red-600">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

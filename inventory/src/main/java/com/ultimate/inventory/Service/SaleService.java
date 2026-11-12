@@ -188,27 +188,6 @@ public class SaleService {
         return invoice;
     }
 
-    /** Voids an unpaid sale and puts its stock back into the batches it came from. Managers only. */
-    @Transactional
-    public Invoice voidSale(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
-        Invoice invoice = getSale(businessId, invoiceId, userEmail);
-        if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
-            throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
-        }
-        if (invoice.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            throw new AppException(HttpStatus.CONFLICT,
-                    "Cannot void an invoice with payments. Reverse the payments first.");
-        }
-        inventoryService.reverseSale(invoice, detailRepo.findByInvoice(invoice), userEmail);
-        invoice.setInvoiceStatus(InvoiceStatus.VOID);
-        invoice.setPaymentStatus(PaymentStatus.VOID);
-        invoice.setUpdatedBy(userEmail);
-        invoice.setUpdatedAt(new Date());
-        log.info("Sale voided: invoice={} by {}", invoice.getInvoiceNumber(), userEmail);
-        return invoiceRepo.save(invoice);
-    }
-
     private String generateInvoiceNumber(Business business, InvoiceType type, Long id) {
         String prefix = type == InvoiceType.SALES ? "SALE" : "PURCH";
         return business.getCode() + "-" + prefix + "-" + String.format("%08d", id);

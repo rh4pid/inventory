@@ -9,6 +9,7 @@ import type {
   ShopPayload, Unit, ProductUnit, ProductUnitPayload, StockMovement, StockBatch,
   StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
+  InvoiceDetailView, ReturnPayload, PaymentMethod,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -208,8 +209,17 @@ export const sales = {
     req<Invoice>(`/businesses/${businessId}/sales/${id}`),
   create: (businessId: number, data: SalePayload) =>
     req<Invoice>(`/businesses/${businessId}/sales`, { method: "POST", body: JSON.stringify(data) }),
-  void: (businessId: number, id: number) =>
-    req<Invoice>(`/businesses/${businessId}/sales/${id}/void`, { method: "POST" }),
+  /** Works on paid invoices too: stock goes back, payments are refunded, the books are reversed. */
+  void: (businessId: number, id: number, refundMethod?: PaymentMethod) =>
+    req<Invoice>(`/businesses/${businessId}/sales/${id}/void`, {
+      method: "POST", body: JSON.stringify({ refundMethod }),
+    }),
+  detail: (businessId: number, id: number) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/sales/${id}/detail`),
+  returnItems: (businessId: number, id: number, data: ReturnPayload) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/sales/${id}/returns`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
   recordPayment: (businessId: number, invoiceId: number, data: PaymentPayload) =>
     req<Payment>(`/businesses/${businessId}/sales/${invoiceId}/payments`, {
       method: "POST", body: JSON.stringify(data),
@@ -270,8 +280,17 @@ export const purchases = {
     req<Invoice>(`/businesses/${businessId}/purchases/${id}`),
   create: (businessId: number, data: PurchasePayload) =>
     req<Invoice>(`/businesses/${businessId}/purchases`, { method: "POST", body: JSON.stringify(data) }),
-  void: (businessId: number, id: number) =>
-    req<Invoice>(`/businesses/${businessId}/purchases/${id}/void`, { method: "POST" }),
+  /** Works on paid invoices too: stock goes back, payments are refunded, the books are reversed. */
+  void: (businessId: number, id: number, refundMethod?: PaymentMethod) =>
+    req<Invoice>(`/businesses/${businessId}/purchases/${id}/void`, {
+      method: "POST", body: JSON.stringify({ refundMethod }),
+    }),
+  detail: (businessId: number, id: number) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/purchases/${id}/detail`),
+  returnItems: (businessId: number, id: number, data: ReturnPayload) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/purchases/${id}/returns`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
   recordPayment: (businessId: number, invoiceId: number, data: PaymentPayload) =>
     req<Payment>(`/businesses/${businessId}/purchases/${invoiceId}/payments`, {
       method: "POST", body: JSON.stringify(data),

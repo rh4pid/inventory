@@ -6,14 +6,10 @@ import { products as productsApi, shops as shopsApi, sales as salesApi } from "@
 import { useBusiness } from "@/context/BusinessContext";
 import type { Product, Shop, SalePayload, PaymentMethod } from "@/Types";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { CartLineOptions, addProduct, type CartLine } from "@/components/sales/CartLineOptions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-interface CartItem {
-  product: Product;
-  qty: number;
-  unitPrice: number;
-}
 
 const PAYMENT_OPTS: { label: string; value: PaymentMethod; icon: React.ReactNode }[] = [
   { label: "Cash",          value: "CASH",          icon: <Banknote className="h-4 w-4" /> },
@@ -30,7 +26,11 @@ export default function POSPage() {
   const [shopId, setShopId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const { settings } = useBusinessSettings();
+  const multipleUnits = Boolean(settings?.multipleUnits);
+  const trackBatches = Boolean(settings?.trackBatches);
+  const trackExpiry = Boolean(settings?.trackExpiry);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashTendered, setCashTendered] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,26 +62,17 @@ export default function POSPage() {
     return matchCat && matchQ;
   }), [allProducts, categoryFilter, search]);
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing) return prev.map((i) => i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { product, qty: 1, unitPrice: product.sellingPrice }];
-    });
+  const addToCart = (product: Product) => setCart((prev) => addProduct(prev, product));
+
+  const updateQty = (key: string, delta: number) => {
+    setCart((prev) => prev.map((i) => i.key === key ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i));
   };
 
-  const updateQty = (productId: number, delta: number) => {
-    setCart((prev) => prev.map((i) => i.product.id === productId
-      ? { ...i, qty: Math.max(1, i.qty + delta) }
-      : i
-    ));
-  };
+  const replaceLine = (line: CartLine) => setCart((prev) => prev.map((i) => i.key === line.key ? line : i));
 
-  const removeItem = (productId: number) => {
-    setCart((prev) => prev.filter((i) => i.product.id !== productId));
-  };
+  const removeItem = (key: string) => setCart((prev) => prev.filter((i) => i.key !== key));
 
-  const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+  const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const tendered = parseFloat(cashTendered) || 0;
   const change = paymentMethod === "CASH" ? Math.max(0, tendered - subtotal) : 0;
   const canCheckout = cart.length > 0 && shopId != null && (paymentMethod !== "CASH" || tendered >= subtotal);
@@ -92,7 +83,10 @@ export default function POSPage() {
     const payload: SalePayload = {
       shopId,
       paymentMethod,
-      items: cart.map((i) => ({ productId: i.product.id, quantity: i.qty, unitPrice: i.unitPrice })),
+      items: cart.map((i) => ({
+        productId: i.product.id, quantity: i.quantity, unitPrice: i.unitPrice,
+        unitId: i.unitId, batchId: i.batchId,
+      })),
     };
     try {
       const invoice = await salesApi.create(bizId, payload);
@@ -206,30 +200,34 @@ export default function POSPage() {
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.product.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={item.key} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.product.productName}</p>
-                  <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} each</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} per {item.unitName ?? item.product.unit?.name ?? "unit"}</p>
+                  <CartLineOptions
+                    businessId={bizId} shopId={shopId} line={item} onChange={replaceLine} compact
+                    multipleUnits={multipleUnits} trackBatches={trackBatches} trackExpiry={trackExpiry}
+                  />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => updateQty(item.product.id, -1)}
+                    onClick={() => updateQty(item.key, -1)}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
                   >
                     <Minus className="h-3 w-3" />
                   </button>
-                  <span className="w-6 text-center text-sm font-medium">{item.qty}</span>
+                  <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
                   <button
-                    onClick={() => updateQty(item.product.id, 1)}
+                    onClick={() => updateQty(item.key, 1)}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
                   >
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
                 <div className="w-16 text-right shrink-0">
-                  <p className="text-sm font-semibold">{formatCurrency(item.unitPrice * item.qty)}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(item.unitPrice * item.quantity)}</p>
                 </div>
-                <button onClick={() => removeItem(item.product.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                <button onClick={() => removeItem(item.key)} className="text-gray-300 hover:text-red-500 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>

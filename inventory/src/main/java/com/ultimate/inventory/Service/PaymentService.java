@@ -39,20 +39,20 @@ public class PaymentService {
     }
 
     @Transactional
-    public Payment recordPayment(Long businessId, Long invoiceId, PaymentDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
-
-        Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, accessHelper.requireBusiness(businessId))
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));
+    public Payment recordPayment(Long businessId, Long invoiceId, InvoiceType type, PaymentDTO dto, String userEmail) {
+        Invoice invoice = requireInvoice(businessId, invoiceId, type, userEmail);
 
         if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
             throw new AppException(HttpStatus.CONFLICT, "Cannot record payment on a void invoice");
         }
-        if (invoice.getPaymentStatus() == PaymentStatus.PAID) {
-            throw new AppException(HttpStatus.CONFLICT, "Invoice is already fully paid");
+        if (dto.getPaymentMethod() == PaymentMethod.CREDIT) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Choose how the money was paid (cash, bank, mobile money…)");
         }
-
-        BigDecimal outstanding = invoice.getTotalAmount().subtract(invoice.getAmountPaid());
+        // Returns lower what is owed.
+        BigDecimal outstanding = InvoiceAdjustmentService.balanceDue(invoice);
+        if (outstanding.signum() <= 0) {
+            throw new AppException(HttpStatus.CONFLICT, "Nothing is owed on this invoice");
+        }
         if (dto.getAmount().compareTo(outstanding) > 0) {
             throw new AppException(HttpStatus.BAD_REQUEST,
                     "Payment amount " + dto.getAmount() + " exceeds outstanding balance " + outstanding);
@@ -72,8 +72,7 @@ public class PaymentService {
 
         BigDecimal newAmountPaid = invoice.getAmountPaid().add(dto.getAmount());
         invoice.setAmountPaid(newAmountPaid);
-        invoice.setPaymentStatus(newAmountPaid.compareTo(invoice.getTotalAmount()) >= 0
-                ? PaymentStatus.PAID : PaymentStatus.PARTIAL);
+        InvoiceAdjustmentService.refreshPaymentStatus(invoice);
         invoice.setUpdatedBy(userEmail);
         invoice.setUpdatedAt(new Date());
         invoiceRepo.save(invoice);
@@ -89,10 +88,19 @@ public class PaymentService {
         return saved;
     }
 
-    public List<Payment> listPayments(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+    public List<Payment> listPayments(Long businessId, Long invoiceId, InvoiceType type, String userEmail) {
+        return paymentRepo.findByInvoice(requireInvoice(businessId, invoiceId, type, userEmail));
+    }
+
+    /** The invoice, if it is of this type, in this business and at a location the caller works at. */
+    private Invoice requireInvoice(Long businessId, Long invoiceId, InvoiceType type, String userEmail) {
+        com.ultimate.inventory.Model.BusinessUser member = accessHelper.requireMembership(businessId, userEmail);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, accessHelper.requireBusiness(businessId))
+                .filter(i -> i.getType() == type)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));
-        return paymentRepo.findByInvoice(invoice);
+        if (invoice.getShop() != null && !accessHelper.canUseShop(member, invoice.getShop())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
+        }
+        return invoice;
     }
 }

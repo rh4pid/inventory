@@ -12,12 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { VoidInvoiceButton } from "@/components/shared/VoidInvoiceButton";
+import { InvoiceDialog } from "@/components/shared/InvoiceDialog";
 import type { Invoice } from "@/Types";
 
 export default function SalesPage() {
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Invoice[]>([]);
+  const [opened, setOpened] = useState<Invoice | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function SalesPage() {
             </TableHeader>
             <TableBody>
               {items.map((s) => (
-                <TableRow key={s.id} className="cursor-pointer">
+                <TableRow key={s.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setOpened(s)}>
                   <TableCell className="font-mono text-xs">{s.invoiceNumber}</TableCell>
                   <TableCell className="text-sm">
                     {s.customer
@@ -88,7 +89,9 @@ export default function SalesPage() {
                   <TableCell className="text-xs text-gray-500">
                     {s.createdAt ? formatDate(s.createdAt) : "—"}
                   </TableCell>
-                  <TableCell><VoidInvoiceButton invoice={s} onDone={load} /></TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpened(s); }}>Open</Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -110,6 +113,9 @@ export default function SalesPage() {
             </div>
           )}
         </div>
+      )}
+      {opened && (
+        <InvoiceDialog invoice={opened} onClose={() => setOpened(null)} onChanged={load} />
       )}
     </div>
   );
