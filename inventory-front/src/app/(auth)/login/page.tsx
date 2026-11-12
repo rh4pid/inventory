@@ -1,4 +1,5 @@
 "use client";
+import { LogoMark } from "@/components/layout/Logo";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -6,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, BoxesIcon } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,12 +39,12 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+      <div className="space-y-6 rounded-4xl border border-white/70 bg-frame p-8 shadow-float">
         {/* Logo */}
         <div className="flex flex-col items-center gap-2 pb-2">
           <div className="flex items-center gap-2">
-            <BoxesIcon className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">Inventra</span>
+            <LogoMark className="h-9 w-9" />
+            <span className="text-2xl font-semibold tracking-tight text-ink">Inventory</span>
           </div>
           <p className="text-sm text-gray-500">Sign in to your account</p>
         </div>

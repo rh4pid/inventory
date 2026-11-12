@@ -85,7 +85,7 @@ export default function ApprovalsPage() {
         <EmptyState title={filter === "PENDING" ? "Nothing waiting" : "No requests"}
           description={filter === "PENDING" ? "All stock changes have been reviewed." : "No requests with this status."} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

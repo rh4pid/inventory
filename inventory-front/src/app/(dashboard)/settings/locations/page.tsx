@@ -86,7 +86,7 @@ export default function LocationsSettingsPage() {
       {list.length === 0 ? (
         <EmptyState title="No locations yet" description="Add your first shop or warehouse to start tracking stock." />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

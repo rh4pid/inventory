@@ -74,7 +74,7 @@ export default function StockCountsPage() {
       {list.length === 0 ? (
         <EmptyState title="No counts yet" description="Start a count for a location to check stock against the system." />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

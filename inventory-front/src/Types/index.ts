@@ -546,3 +546,26 @@ export interface ReturnPayload {
   reason?: string;
   refundMethod?: PaymentMethod;
 }
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+export interface DashboardData {
+  period: "week" | "month" | "quarter" | "year";
+  days: number;
+  shopId?: number | null;
+  orders: { completed: number; inProgress: number; returns: number; overdue: number; total: number };
+  stock: { inStock: number; lowStock: number; outOfStock: number; deadStock: number; products: number };
+  flow: { date: string; in: number; out: number }[];
+  attention: { productId: number; productName: string; sku?: string; reason: "OUT" | "LOW" | "EXPIRED" | "EXPIRING"; detail: string }[];
+  attentionTotal: number;
+  recentOrders: {
+    id: number; invoiceNumber: string; type: InvoiceType;
+    status: "SOLD" | "RECEIVED" | "RETURNED" | "PART_RETURNED" | "VOID";
+    paymentStatus?: PaymentStatus; headline: string; itemCount: number; party: string;
+    orderedBy?: string; total: string | number; paymentMethod?: PaymentMethod; createdAt?: string; shopName?: string;
+  }[];
+  products: {
+    productId: number; productName: string; sku?: string; category?: string; supplier?: string; unit?: string;
+    cost: number; onHand: number; onHandValue: number; soldInPeriod: number;
+    stockStatus: "IN" | "LOW" | "OUT" | "DEAD"; demand: "HIGH" | "NORMAL" | "LOW";
+  }[];
+}

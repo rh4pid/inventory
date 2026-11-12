@@ -78,7 +78,7 @@ export default function AccountsPage() {
           }
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

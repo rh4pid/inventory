@@ -9,7 +9,7 @@ import type {
   ShopPayload, Unit, ProductUnit, ProductUnitPayload, StockMovement, StockBatch,
   StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
-  InvoiceDetailView, ReturnPayload, PaymentMethod,
+  InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -323,4 +323,11 @@ export const accounts = {
     req<Account>(`/businesses/${businessId}/accounts`, { method: "POST", body: JSON.stringify(data) }),
   update: (businessId: number, id: number, data: AccountPayload) =>
     req<Account>(`/businesses/${businessId}/accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+export const dashboard = {
+  /** Figures for one location (or all my locations) over a period. */
+  get: (businessId: number, params?: { shopId?: number; period?: string }) =>
+    req<DashboardData>(`/businesses/${businessId}/dashboard${qs(params)}`),
 };

@@ -1,14 +1,16 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { Sidebar, MobileNav } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { useAuth } from "@/context/AuthProvider";
+import { WorkspaceProvider } from "@/context/WorkspaceContext";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -18,14 +20,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          {children}
-        </main>
+    <WorkspaceProvider>
+      <div className="app-canvas h-dvh p-0 md:p-4 lg:p-5">
+        <div className="flex h-full overflow-hidden bg-frame md:rounded-4xl md:border md:border-white/70 md:shadow-float">
+          <Sidebar />
+          <MobileNav open={menuOpen} onClose={() => setMenuOpen(false)} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Header onOpenMenu={() => setMenuOpen(true)} />
+            <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 md:px-6">
+              {children}
+            </main>
+          </div>
+        </div>
       </div>
-    </div>
+    </WorkspaceProvider>
   );
 }

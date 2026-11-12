@@ -140,7 +140,7 @@ export default function StockCountPage() {
         </p>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+      <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

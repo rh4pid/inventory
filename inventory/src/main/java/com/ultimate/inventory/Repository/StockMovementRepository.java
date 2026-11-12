@@ -36,6 +36,14 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
                                @Param("product") Product product,
                                Pageable pageable);
 
+    /** Every movement in the business since a date (dashboard flow, demand and dead-stock figures). */
+    @Query("SELECT m FROM StockMovement m WHERE m.shop.business = :business AND m.createdAt >= :since")
+    java.util.List<StockMovement> findSince(@Param("business") Business business, @Param("since") java.util.Date since);
+
+    /** Deliveries that name a supplier, newest first (who supplies each product). */
+    @Query("SELECT m FROM StockMovement m WHERE m.shop.business = :business AND m.supplierId IS NOT NULL ORDER BY m.id DESC")
+    java.util.List<StockMovement> findWithSupplier(@Param("business") Business business, Pageable pageable);
+
     /** Movement history limited to a set of locations (what a staff member may see). */
     @Query("SELECT m FROM StockMovement m WHERE m.shop.business = :business " +
            "AND m.shop.id IN :shopIds " +

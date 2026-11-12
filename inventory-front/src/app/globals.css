@@ -1,57 +1,170 @@
 @import "tailwindcss";
 
+/*
+ * Inventory design system, after the dashboard sample: big rounded cards, a saturated blue and
+ * a saturated orange as the two brand colours, an icon rail, and patterned data marks.
+ * Light, warm base and deep navy ink. No black anywhere: Tailwind's gray scale is remapped to
+ * navy-tinted tones, so every existing `text-gray-900` / `bg-gray-50` follows the theme.
+ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
+  /* Brand */
+  --brand-blue: #3563e9;
+  --brand-blue-deep: #2447c7;
+  --brand-blue-soft: #e8eefd;
+  --brand-orange: #f2622e;
+  --brand-orange-deep: #d9481a;
+  --brand-orange-soft: #fde9e1;
+
+  /* Ink & surfaces */
+  --ink: #1c2541;          /* primary text, never black */
+  --ink-2: #434b63;        /* secondary text */
+  --ink-3: #6e7690;        /* muted text */
+  --canvas: #ece6df;       /* behind the app frame */
+  --frame: #f7f4f0;        /* the app frame */
+  --surface: #ffffff;      /* cards */
+  --surface-2: #f1ede8;    /* wells, rail buttons, inputs */
+  --line: #e6e0d8;
+
+  /* Legacy names still used by a few components */
+  --background: var(--frame);
+  --foreground: var(--ink);
+  --card-bg: var(--surface);
+  --card-border: var(--line);
+  --primary: var(--brand-blue);
+  --primary-hover: var(--brand-blue-deep);
   --primary-fg: #ffffff;
-  --destructive: #ef4444;
+  --destructive: #e5484d;
   --destructive-fg: #ffffff;
-  --muted: #f1f5f9;
-  --muted-fg: #64748b;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #3b82f6;
-  --sidebar: #0f172a;
-  --sidebar-fg: #f1f5f9;
-  --sidebar-active: #1e3a5f;
-  --sidebar-hover: #1e293b;
-  --radius: 0.5rem;
+  --muted: var(--surface-2);
+  --muted-fg: var(--ink-3);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand-blue);
+  --radius: 1rem;
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card-bg);
-  --color-primary: var(--primary);
+  --color-card: var(--surface);
+  --color-primary: var(--brand-blue);
   --color-primary-fg: var(--primary-fg);
   --color-destructive: var(--destructive);
-  --color-muted: var(--muted);
-  --color-muted-fg: var(--muted-fg);
-  --color-border: var(--border);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-fg: var(--sidebar-fg);
+  --color-muted: var(--surface-2);
+  --color-muted-fg: var(--ink-3);
+  --color-border: var(--line);
+
+  --color-brand: var(--brand-blue);
+  --color-brand-deep: var(--brand-blue-deep);
+  --color-brand-soft: var(--brand-blue-soft);
+  --color-accent: var(--brand-orange);
+  --color-accent-deep: var(--brand-orange-deep);
+  --color-accent-soft: var(--brand-orange-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-canvas: var(--canvas);
+  --color-frame: var(--frame);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
 }
 
-* {
-  box-sizing: border-box;
+/* Warm, navy-tinted neutrals instead of Tailwind's gray (whose 900/950 read as black). */
+@theme {
+  --color-gray-50: #f8f6f3;
+  --color-gray-100: #f1ede8;
+  --color-gray-200: #e6e0d8;
+  --color-gray-300: #d4cdc3;
+  --color-gray-400: #a2a6b5;
+  --color-gray-500: #6e7690;
+  --color-gray-600: #565e78;
+  --color-gray-700: #434b63;
+  --color-gray-800: #2c3450;
+  --color-gray-900: #1c2541;
+  --color-gray-950: #161d36;
+  --color-slate-900: #1c2541;
+  --color-slate-950: #161d36;
+  --color-black: #1c2541;
+
+  /* Tailwind blue → the brand blue, so existing buttons and links match. */
+  --color-blue-50: #eef2fe;
+  --color-blue-100: #dde6fd;
+  --color-blue-200: #bccdfa;
+  --color-blue-300: #8eabf5;
+  --color-blue-400: #5f86ef;
+  --color-blue-500: #4673ec;
+  --color-blue-600: #3563e9;
+  --color-blue-700: #2447c7;
+  --color-blue-800: #1f3a9e;
+  --color-blue-900: #1d327c;
+
+  --radius-4xl: 2rem;
+  --shadow-card: 0 1px 2px rgb(28 37 65 / 0.04), 0 8px 24px -12px rgb(28 37 65 / 0.12);
+  --shadow-float: 0 12px 40px -12px rgb(28 37 65 / 0.25);
 }
+
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* The soft orange/blue glow behind the frame, as in the sample (light version). */
+.app-canvas {
+  background:
+    radial-gradient(60rem 30rem at -10% -20%, rgb(242 98 46 / 0.28), transparent 60%),
+    radial-gradient(50rem 26rem at 110% 120%, rgb(53 99 233 / 0.22), transparent 60%),
+    radial-gradient(40rem 20rem at 50% 115%, rgb(242 98 46 / 0.16), transparent 70%),
+    var(--canvas);
+}
+
+/* ── Pattern fills for data marks (texture keeps categories apart without colour) ── */
+.fill-zigzag {
+  background-color: currentColor;
+  background-image:
+    linear-gradient(135deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(225deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(315deg, var(--pattern-bg, transparent) 25%, transparent 25%);
+  background-position: 6px 0, 6px 0, 0 0, 0 0;
+  background-size: 12px 12px;
+}
+.fill-stripes {
+  background-image: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 7px);
+}
+.fill-speckle {
+  background-image:
+    radial-gradient(currentColor 1.2px, transparent 1.6px),
+    radial-gradient(currentColor 1.2px, transparent 1.6px);
+  background-size: 8px 8px, 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+.fill-fade {
+  background-image: linear-gradient(180deg, currentColor, transparent 140%);
+}
+
+/* Rail tooltips */
+.rail-tip {
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(-4px);
+  white-space: nowrap; pointer-events: none; opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.group:hover > .rail-tip, .group:focus-visible > .rail-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: #d4cdc3; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #a2a6b5; background-clip: content-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

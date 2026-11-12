@@ -3,22 +3,23 @@ import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-frame disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default:     "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+        default:     "bg-brand text-white hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgb(53_99_233/0.8)]",
+        accent:      "bg-accent text-white hover:bg-accent-deep shadow-[0_6px_16px_-8px_rgb(242_98_46/0.8)]",
         destructive: "bg-red-500 text-white hover:bg-red-600 shadow-sm",
-        outline:     "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-sm",
-        secondary:   "bg-gray-100 text-gray-900 hover:bg-gray-200",
-        ghost:       "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+        outline:     "border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink shadow-card",
+        secondary:   "bg-surface-2 text-ink hover:bg-gray-200",
+        ghost:       "text-ink-2 hover:bg-surface-2 hover:text-ink",
         link:        "text-blue-600 underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm:      "h-8 rounded-md px-3 text-xs",
-        lg:      "h-11 rounded-md px-8",
-        icon:    "h-10 w-10",
+        sm:      "h-9 rounded-xl px-3 text-xs",
+        lg:      "h-12 rounded-2xl px-8",
+        icon:    "h-10 w-10 rounded-xl",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

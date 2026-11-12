@@ -92,7 +92,7 @@ export default function CustomersPage() {
         <EmptyState title="No customers" description="Add customers to track sales history and loyalty."
           action={<Button onClick={() => setOpen(true)}>Add Customer</Button>} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

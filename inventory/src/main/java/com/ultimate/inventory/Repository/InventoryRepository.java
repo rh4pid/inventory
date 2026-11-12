@@ -23,6 +23,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     List<Inventory> findByProduct(Product product);
 
+    @Query("SELECT i FROM Inventory i WHERE i.shop.business = :business AND i.product.deleted = false")
+    List<Inventory> findActiveByBusiness(@Param("business") Business business);
+
     /** Row-locks the stock line so two concurrent movements cannot both read the same "before" quantity. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM Inventory i WHERE i.product = :product AND i.shop = :shop")

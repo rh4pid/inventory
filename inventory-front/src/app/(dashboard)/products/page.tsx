@@ -23,6 +23,11 @@ export default function ProductsPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Deep link from the dashboard / search: /products?q=…
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setSearch(q);
+  }, []);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -94,7 +99,7 @@ export default function ProductsPage() {
           action={<Link href="/products/new"><Button>Add Product</Button></Link>}
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

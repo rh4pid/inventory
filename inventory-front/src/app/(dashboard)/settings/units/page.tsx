@@ -69,7 +69,7 @@ export default function UnitsSettingsPage() {
         action={canEdit && <Button size="sm" onClick={() => open("new")}><Plus className="h-4 w-4" /> Add unit</Button>}
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

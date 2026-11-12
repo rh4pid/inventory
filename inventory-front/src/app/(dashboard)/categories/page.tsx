@@ -97,7 +97,7 @@ export default function CategoriesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {roots.map((cat) => (
-            <div key={cat.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div key={cat.id} className="rounded-3xl border border-line/80 bg-surface shadow-card p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">{cat.categoryName}</p>

@@ -101,9 +101,9 @@ export default function POSPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-full min-h-[34rem] flex-col overflow-hidden rounded-4xl border border-line/80 bg-surface shadow-card lg:flex-row">
       {/* ── Product Grid ──────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 overflow-hidden border-r border-gray-200">
+      <div className="flex min-h-[20rem] flex-1 flex-col overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
           <Input
@@ -153,7 +153,7 @@ export default function POSPage() {
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all active:scale-95"
+                  className="flex flex-col items-start rounded-3xl border border-line/80 bg-surface shadow-card p-3 text-left shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all active:scale-95"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
                     {product.productName.slice(0, 2).toUpperCase()}
@@ -174,7 +174,7 @@ export default function POSPage() {
       </div>
 
       {/* ── Cart ──────────────────────────────────────────────── */}
-      <div className="flex flex-col w-96 bg-white shrink-0">
+      <div className="flex w-full shrink-0 flex-col bg-surface lg:w-96">
         {/* Cart header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
           <ShoppingCart className="h-5 w-5 text-blue-600" />

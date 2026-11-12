@@ -205,7 +205,7 @@ export default function InventoryPage() {
           {currentView === "stock" && (items.length === 0 ? (
             <EmptyState title="No stock here yet" description="Use Stock In or Transfer to add products to this location." />
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -254,7 +254,7 @@ export default function InventoryPage() {
           {currentView === "batches" && (batches.length === 0 ? (
             <EmptyState title="No batches here" description="Batches are created when stock is received at this location." />
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -306,7 +306,7 @@ export default function InventoryPage() {
           {currentView === "history" && (movements.length === 0 ? (
             <EmptyState title="No movements yet" description="Every stock in, sale, transfer and adjustment will appear here." />
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

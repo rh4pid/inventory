@@ -59,7 +59,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="Settings" description={`${activeBusiness?.businessName ?? ""}`} />
 
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+      <div className="mb-6 rounded-3xl border border-line/80 bg-surface shadow-card p-5">
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
             {user?.firstName?.[0]}{user?.lastName?.[0]}
