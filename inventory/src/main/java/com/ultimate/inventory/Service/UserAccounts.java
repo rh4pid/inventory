@@ -27,10 +27,28 @@ public class UserAccounts {
     private final RefreshTokenRepo refreshTokenRepo;
     private final Security security;
 
-    public UserAccounts(UserRepository userRepo, RefreshTokenRepo refreshTokenRepo, Security security) {
+    /**
+     * Testing aid: when set (app.temporary-password), every new account and every reset gets this
+     * password instead of a random one. Leave it unset in production.
+     */
+    private final String fixedTemporaryPassword;
+
+    public UserAccounts(UserRepository userRepo, RefreshTokenRepo refreshTokenRepo, Security security,
+                        @org.springframework.beans.factory.annotation.Value("${app.temporary-password:}") String fixedTemporaryPassword) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.security = security;
+        this.fixedTemporaryPassword = fixedTemporaryPassword == null ? "" : fixedTemporaryPassword.trim();
+        if (!this.fixedTemporaryPassword.isEmpty()) {
+            org.slf4j.LoggerFactory.getLogger(UserAccounts.class).warn(
+                    "app.temporary-password is set: new accounts and password resets all get the same temporary password. " +
+                    "Remove it before going live.");
+        }
+    }
+
+    /** The temporary password to hand out: the fixed testing one if configured, otherwise random. */
+    private String issueTemporaryPassword() {
+        return fixedTemporaryPassword.isEmpty() ? temporaryPassword() : fixedTemporaryPassword;
     }
 
     /** The account, and its temporary password if it was just created (null for an existing account). */
@@ -73,7 +91,7 @@ public class UserAccounts {
         if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "First and last name are required");
         }
-        String temp = temporaryPassword();
+        String temp = issueTemporaryPassword();
         User u = new User();
         u.setEmail(e);
         u.setFirstName(firstName.trim());
@@ -93,7 +111,7 @@ public class UserAccounts {
     /** Replaces the password with a new temporary one and signs the person out everywhere. */
     @Transactional
     public String resetToTemporary(User user, String by) {
-        String temp = temporaryPassword();
+        String temp = issueTemporaryPassword();
         user.setPassword(security.hashPassword(temp));
         user.setMustChangePassword(true);
         user.setUpdatedBy(by);
