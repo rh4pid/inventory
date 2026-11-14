@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ForcePasswordChange } from "@/components/account/ForcePasswordChange";
+import { NoCompany } from "@/components/company/NoCompany";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
@@ -19,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const can = useCan();
-  const { activeBusiness } = useBusiness();
+  const { activeBusiness, businesses, businessesLoaded } = useBusiness();
   // Pages a role can't use show a message (the server refuses the data anyway).
   const allowed = !activeBusiness || can(pageNeed(pathname));
 
@@ -32,6 +33,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) return <PageLoader />;
   if (!user || user.superAdmin) return null;
   if (user.mustChangePassword) return <ForcePasswordChange />;
+  if (!businessesLoaded) return <PageLoader />;
+  if (businesses.length === 0) return <NoCompany />;
 
   return (
     <SettingsProvider>

@@ -23,6 +23,8 @@ export interface SignUpPayload {
 }
 export interface UsernameCheck { username: string; available: boolean; reason?: string | null; }
 /** What anyone may see about a person found by username. */
+/** A company you create for yourself (you become its owner). */
+export interface NewCompanyPayload { name: string; businessType?: string; email?: string; contact?: string; }
 export interface PublicProfile { id: number; username: string; name: string; profilePicture?: string; }
 export interface LoginResponse { accessToken: string; user: User; }
 

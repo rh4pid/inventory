@@ -4,6 +4,7 @@ import { useBusiness } from "@/context/BusinessContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import { ProfileForm } from "@/components/account/ProfileForm";
+import { MyCompanies } from "@/components/company/MyCompanies";
 import { Monogram } from "@/components/dashboard/Panel";
 
 export default function ProfilePage() {
@@ -47,6 +48,7 @@ export default function ProfilePage() {
           <ChangePasswordForm />
         </section>
       </div>
+      <div className="mt-5"><MyCompanies /></div>
     </div>
   );
 }

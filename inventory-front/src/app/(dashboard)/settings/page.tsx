@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, User, Palette, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound } from "lucide-react";
+import { BookOpen, User, Palette, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound, ArrowLeftRight } from "lucide-react";
 import { useCan, type Capability } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
@@ -53,8 +53,14 @@ const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: stri
   {
     icon: User,
     title: "Profile",
-    description: "Update your name, email, and password",
+    description: "Your name, username and password",
     href: "/settings/profile",
+  },
+  {
+    icon: ArrowLeftRight,
+    title: "My companies",
+    description: "Switch between the companies you work in, or start your own",
+    href: "/settings/companies",
   },
   {
     icon: Palette,

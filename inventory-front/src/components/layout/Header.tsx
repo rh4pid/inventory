@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { locationTypeLabel } from "@/constants/Inventory";
 import { Wordmark, LogoMark } from "./Logo";
 import { NAV } from "./Sidebar";
-import { useCan } from "@/lib/access";
+import { useCan, ROLE_LABEL } from "@/lib/access";
 
 const iconBtn =
   "relative flex h-11 w-11 items-center justify-center rounded-2xl border border-line bg-surface text-ink-2 " +
@@ -205,10 +205,14 @@ function BusinessSwitcher() {
             <Check className={cn("mr-2 h-4 w-4", b.businessId === activeBusiness?.businessId ? "text-accent" : "opacity-0")} />
             <div className="min-w-0">
               <div className="truncate font-medium text-ink">{b.businessName}</div>
-              <div className="text-xs text-ink-3">{b.role}</div>
+              <div className="text-xs text-ink-3">{ROLE_LABEL[b.role] ?? b.role}</div>
             </div>
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="rounded-xl">
+          <Link href="/settings/companies">My companies · create one</Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

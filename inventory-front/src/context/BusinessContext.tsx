@@ -8,8 +8,11 @@ interface BusinessContextType {
   businesses: BusinessMembership[];
   activeBusiness: BusinessMembership | null;
   loadingBusinesses: boolean;
+  /** True once the list has been fetched for the signed-in user (an empty list then means "no company yet"). */
+  businessesLoaded: boolean;
   switchBusiness: (b: BusinessMembership) => void;
-  refreshBusinesses: () => Promise<void>;
+  /** Re-fetch the list; pass an id to switch to that company afterwards (e.g. one you just created). */
+  refreshBusinesses: (selectId?: number) => Promise<void>;
 }
 
 const BusinessContext = createContext<BusinessContextType | null>(null);
@@ -19,18 +22,23 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const [businesses, setBusinesses] = useState<BusinessMembership[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<BusinessMembership | null>(null);
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
+  const [businessesLoaded, setBusinessesLoaded] = useState(false);
 
-  const fetchBusinesses = useCallback(async () => {
+  const fetchBusinesses = useCallback(async (selectId?: number) => {
     setLoadingBusinesses(true);
     try {
       const list = await users.businesses();
       setBusinesses(list);
       setActiveBusiness((prev) => {
-        if (prev) return prev;
-        const stored = typeof window !== "undefined"
-          ? localStorage.getItem("activeBusinessId") : null;
-        return (stored ? list.find((b) => String(b.businessId) === stored) : null) ?? list[0] ?? null;
+        const byId = (id: string | number | null | undefined) =>
+          id == null ? undefined : list.find((b) => String(b.businessId) === String(id));
+        const stored = typeof window !== "undefined" ? localStorage.getItem("activeBusinessId") : null;
+        // The fresh copy (your role may have changed); a company you were removed from drops out.
+        const next = byId(selectId) ?? byId(prev?.businessId) ?? byId(stored) ?? list[0] ?? null;
+        if (next && typeof window !== "undefined") localStorage.setItem("activeBusinessId", String(next.businessId));
+        return next;
       });
+      setBusinessesLoaded(true);
     } catch {}
     setLoadingBusinesses(false);
   }, []);
@@ -40,6 +48,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
     else {
       setBusinesses([]);
       setActiveBusiness(null);
+      setBusinessesLoaded(false);
     }
   }, [user, fetchBusinesses]);
 
@@ -52,7 +61,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <BusinessContext.Provider value={{
-      businesses, activeBusiness, loadingBusinesses,
+      businesses, activeBusiness, loadingBusinesses, businessesLoaded,
       switchBusiness, refreshBusinesses: fetchBusinesses,
     }}>
       {children}

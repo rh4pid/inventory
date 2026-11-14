@@ -35,13 +35,13 @@ public class AdminService {
     private final StockMovementRepository movementRepo;
     private final SettingsService settingsService;
     private final UserAccounts accounts;
-    private final AccountService accountService;
+    private final CompanySetup companySetup;
 
     public AdminService(BusinessAccessHelper accessHelper, BusinessRepository businessRepo,
                         BusinessUserRepo businessUserRepo, ShopRepository shopRepo, ProductRepository productRepo,
                         StockMovementRepository movementRepo, SettingsService settingsService, UserAccounts accounts,
-                        AccountService accountService) {
-        this.accountService = accountService;
+                        CompanySetup companySetup) {
+        this.companySetup = companySetup;
         this.accessHelper = accessHelper;
         this.businessRepo = businessRepo;
         this.businessUserRepo = businessUserRepo;
@@ -93,31 +93,9 @@ public class AdminService {
     @Transactional
     public Result create(CreateCompany req, String email) {
         accessHelper.requireSuperAdmin(email);
-        if (req == null || req.name() == null || req.name().isBlank()) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Company name is required");
-        }
+        if (req == null) throw new AppException(HttpStatus.BAD_REQUEST, "Company name is required");
         if (req.admin() == null) throw new AppException(HttpStatus.BAD_REQUEST, "The company needs an admin");
-        String bizEmail = req.email() != null && !req.email().isBlank() ? UserAccounts.normalizeEmail(req.email()) : null;
-        if (bizEmail != null && businessRepo.findByBusinessEmail(bizEmail) != null) {
-            throw new AppException(HttpStatus.CONFLICT, "Another company already uses " + bizEmail);
-        }
-
-        Business b = new Business();
-        b.setName(req.name().trim());
-        b.setBusinessEmail(bizEmail);
-        b.setBusinessContact(blankToNull(req.contact()));
-        b.setSuspended(false);
-        b.setLocked(false);
-        b.setDeleted(false);
-        b.setCreatedBy(email);
-        b.setCreatedAt(new Date());
-        // Code needs the id: save with a unique placeholder first (the column is NOT NULL).
-        b.setCode("INIT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        b = businessRepo.save(b);
-        b.setCode("BIZ" + String.format("%05d", b.getId()));
-        b = businessRepo.save(b);
-        settingsService.applyBusinessType(b, req.businessType() != null ? req.businessType() : BusinessType.GENERAL_RETAIL, email);
-        accountService.ensureDefaults(b, email); // the standard chart of accounts, ready to post to
+        Business b = companySetup.create(req.name(), req.email(), req.contact(), req.businessType(), email);
 
         Credentials creds = addAdminTo(b, req.admin(), email);
         log.info("Company {} ({}) created by super admin {} with admin {}", b.getCode(), b.getName(), email, creds.email());

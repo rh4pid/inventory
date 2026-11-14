@@ -1,5 +1,5 @@
 import type {
-  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, User, BusinessMembership,
+  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, User, BusinessMembership,
   Product, ProductPayload, Category, CategoryPayload,
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
@@ -73,6 +73,13 @@ export const users = {
   lookup: (username: string) => req<PublicProfile>(`/users/lookup${qs({ q: username })}`),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<User>("/users/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+};
+
+// ── Your own companies ───────────────────────────────────────────────────────
+export const companies = {
+  /** Create a company; you become its owner. Returns your new membership. */
+  create: (data: NewCompanyPayload) =>
+    req<BusinessMembership>("/companies", { method: "POST", body: JSON.stringify(data) }),
 };
 
 // ── Shops ────────────────────────────────────────────────────────────────────
