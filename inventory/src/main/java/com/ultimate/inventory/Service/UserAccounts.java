@@ -26,6 +26,7 @@ public class UserAccounts {
     private final UserRepository userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final Security security;
+    private final Usernames usernames;
 
     /**
      * Testing aid: when set (app.temporary-password), every new account and every reset gets this
@@ -33,11 +34,12 @@ public class UserAccounts {
      */
     private final String fixedTemporaryPassword;
 
-    public UserAccounts(UserRepository userRepo, RefreshTokenRepo refreshTokenRepo, Security security,
+    public UserAccounts(UserRepository userRepo, RefreshTokenRepo refreshTokenRepo, Security security, Usernames usernames,
                         @org.springframework.beans.factory.annotation.Value("${app.temporary-password:}") String fixedTemporaryPassword) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.security = security;
+        this.usernames = usernames;
         this.fixedTemporaryPassword = fixedTemporaryPassword == null ? "" : fixedTemporaryPassword.trim();
         if (!this.fixedTemporaryPassword.isEmpty()) {
             org.slf4j.LoggerFactory.getLogger(UserAccounts.class).warn(
@@ -96,6 +98,8 @@ public class UserAccounts {
         u.setEmail(e);
         u.setFirstName(firstName.trim());
         u.setLastName(lastName.trim());
+        // Made from their name; they can change it in their profile.
+        u.setUsername(usernames.suggest(u.getFirstName(), u.getLastName()));
         if (phone != null && !phone.isBlank()) u.setTelephonePrimary(phone.trim());
         u.setPassword(security.hashPassword(temp));
         u.setMustChangePassword(true);

@@ -1,21 +1,16 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.Constants.UserRoles;
 import com.ultimate.inventory.DTO.AuthResult;
-import com.ultimate.inventory.DTO.LoginResponseDTO;
-import com.ultimate.inventory.DTO.RegisterDTO;
+import com.ultimate.inventory.DTO.SignUpDTO;
 import com.ultimate.inventory.DTO.UserResponseDTO;
 import com.ultimate.inventory.DTO.loginDTO;
 import com.ultimate.inventory.Exception.AppException;
-import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.BusinessUser;
 import com.ultimate.inventory.Model.RefreshTokens;
 import com.ultimate.inventory.Model.User;
-import com.ultimate.inventory.Repository.BusinessRepository;
 import com.ultimate.inventory.Repository.BusinessUserRepo;
 import com.ultimate.inventory.Repository.RefreshTokenRepo;
 import com.ultimate.inventory.Repository.UserRepository;
-import com.ultimate.inventory.utils.FileStorage;
 import com.ultimate.inventory.utils.Security;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -23,9 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Date;
 
 @Service
@@ -35,16 +28,14 @@ public class AuthService {
 
     @Autowired private UserRepository userRepo;
     @Autowired private RefreshTokenRepo refreshTokenRepo;
-    @Autowired private BusinessRepository businessRepo;
     @Autowired private BusinessUserRepo businessUserRepo;
     @Autowired private Security security;
-    @Autowired private FileStorage fileStorage;
-    @Autowired private AccountService accountService;
+    @Autowired private Usernames usernames;
     @org.springframework.beans.factory.annotation.Value("${app.self-signup:false}") private boolean selfSignUp;
 
     public void ensureSignUpOpen() {
         if (!selfSignUp) {
-            throw new AppException(HttpStatus.FORBIDDEN, "Sign-up is closed. Ask your company administrator for an account.");
+            throw new AppException(HttpStatus.FORBIDDEN, "Sign-up is closed right now. Ask a company administrator to add you.");
         }
     }
 
@@ -65,12 +56,72 @@ public class AuthService {
 
     @Transactional
     public AuthResult login(loginDTO dto, String deviceInfo, String ipAddress) {
-        User user = userRepo.findByEmail(dto.getEmail());
+        User user = findForSignIn(dto.getLogin());
         if (user == null || !security.isPassword(dto.getPassword(), user.getPassword())) {
             throw new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
         ensureCanSignIn(user);
+        log.info("User logged in: {}", user.getEmail());
+        return startSession(user, deviceInfo, ipAddress);
+    }
 
+    /** "ama@shop.com" finds by email; "ama_mensah" or "@ama_mensah" by username. */
+    private User findForSignIn(String login) {
+        String l = login == null ? "" : login.trim();
+        if (l.indexOf('@') > 0) {
+            User exact = userRepo.findByEmail(l);
+            return exact != null ? exact : userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(l);
+        }
+        String username = Usernames.clean(l);
+        return username.isEmpty() ? null : userRepo.findByUsername(username);
+    }
+
+    /** Anyone can create an account; they then create a company or get invited to one. */
+    @Transactional
+    public AuthResult signUp(SignUpDTO dto, String deviceInfo, String ipAddress) {
+        ensureSignUpOpen();
+        if (dto == null) throw new AppException(HttpStatus.BAD_REQUEST, "Fill in the form");
+        String firstName = required(dto.firstName(), "First name is required");
+        String lastName = required(dto.lastName(), "Last name is required");
+        String email = UserAccounts.normalizeEmail(dto.email());
+        if (userRepo.existsByEmailIgnoreCase(email)) {
+            throw new AppException(HttpStatus.CONFLICT, "An account with this email already exists. Sign in instead.");
+        }
+        String username = usernames.requireAvailable(dto.username(), null);
+        UserAccounts.checkNewPassword(dto.password());
+
+        User user = new User();
+        user.setFirstName(firstName);
+        user.setOtherName(blankToNull(dto.otherName()));
+        user.setLastName(lastName);
+        user.setEmail(email);
+        user.setUsername(username);
+        user.setTelephonePrimary(blankToNull(dto.telephonePrimary()));
+        user.setPassword(security.hashPassword(dto.password()));
+        user.setMustChangePassword(false);
+        user.setSuperAdmin(false);
+        user.setLocked(false);
+        user.setSuspended(false);
+        user.setDeleted(false);
+        user.setCreatedBy(email);
+        user.setCreatedAt(new Date());
+        user = userRepo.save(user);
+
+        log.info("New account: @{} ({})", username, email);
+        return startSession(user, deviceInfo, ipAddress);
+    }
+
+    /** For the sign-up form: can this username be taken? (Usernames are public handles, so this reveals nothing private.) */
+    public UsernameCheck checkUsername(String raw) {
+        String u = Usernames.clean(raw);
+        String problem = Usernames.problem(u);
+        if (problem == null && !usernames.isFree(u, null)) problem = "@" + u + " is taken";
+        return new UsernameCheck(u, problem == null, problem);
+    }
+
+    public record UsernameCheck(String username, boolean available, String reason) {}
+
+    private AuthResult startSession(User user, String deviceInfo, String ipAddress) {
         String rawToken = security.generateRefreshToken();
         RefreshTokens refreshToken = new RefreshTokens();
         refreshToken.setUser(user);
@@ -81,59 +132,16 @@ public class AuthService {
         refreshTokenRepo.save(refreshToken);
 
         String accessToken = security.generateAccessToken(user.getId(), user.getEmail());
-        log.info("User logged in: {}", user.getEmail());
         return new AuthResult(accessToken, rawToken, new UserResponseDTO(user));
     }
 
-    /**
-     * Disabled, kept for reference: companies and their admins are now created by the super admin,
-     * and employees by their company admin (see AdminService / TeamService).
-     */
-    @Transactional
-    public void register(RegisterDTO dto, MultipartFile businessLogo) throws IOException {
-        ensureSignUpOpen();
-        if (userRepo.findByEmail(dto.getEmail()) != null) {
-            throw new AppException(HttpStatus.CONFLICT, "Email already registered");
-        }
-        if (businessRepo.findByBusinessEmail(dto.getBusinessEmail()) != null) {
-            throw new AppException(HttpStatus.CONFLICT, "Business email already registered");
-        }
+    private static String required(String value, String message) {
+        if (value == null || value.isBlank()) throw new AppException(HttpStatus.BAD_REQUEST, message);
+        return value.trim();
+    }
 
-        User user = new User();
-        user.setPassword(security.hashPassword(dto.getPassword()));
-        user.setEmail(dto.getEmail());
-        user.setFirstName(dto.getFirstName());
-        user.setOtherName(dto.getOtherName());
-        user.setLastName(dto.getLastName());
-        user = userRepo.save(user);
-
-        Business business = new Business();
-        business.setName(dto.getBusinessName());
-        business.setBusinessEmail(dto.getBusinessEmail());
-        business.setBusinessContact(dto.getBusinessContact());
-        business.setBusinessSecondaryContact(dto.getBusinessSecondaryContact());
-
-        if (businessLogo != null && !businessLogo.isEmpty()) {
-            var saved = fileStorage.saveFile(businessLogo, dto.getBusinessEmail());
-            if (Boolean.TRUE.equals(saved.getStatus())) {
-                business.setBusinessLogo(saved.getMessage());
-            }
-        }
-
-        // Satisfy NOT NULL constraint with a unique placeholder; replace after ID is assigned
-        business.setCode("INIT-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        business = businessRepo.save(business);
-        business.setCode("BIZ" + String.format("%05d", business.getId()));
-        businessRepo.save(business);
-        accountService.ensureDefaults(business, user.getEmail()); // standard chart of accounts
-
-        BusinessUser businessUser = new BusinessUser();
-        businessUser.setBusiness(business);
-        businessUser.setUser(user);
-        businessUser.setRoles(UserRoles.OWNER);
-        businessUserRepo.save(businessUser);
-
-        log.info("Business registered: {} by user: {}", business.getCode(), user.getEmail());
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     public AuthResult refreshToken(String cookieValue) {

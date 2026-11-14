@@ -1,5 +1,5 @@
 import type {
-  LoginPayload, LoginResponse, User, BusinessMembership,
+  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, User, BusinessMembership,
   Product, ProductPayload, Category, CategoryPayload,
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
@@ -56,8 +56,9 @@ function qs(params?: Record<string, string | number | boolean | undefined>): str
 export const auth = {
   login: (data: LoginPayload) =>
     req<LoginResponse>("/auth", { method: "POST", body: JSON.stringify(data) }),
-  register: (formData: FormData) =>
-    req<string>("/auth", { method: "POST", body: formData }),
+  signUp: (data: SignUpPayload) =>
+    req<LoginResponse>("/auth/signup", { method: "POST", body: JSON.stringify(data) }),
+  usernameAvailable: (username: string) => req<UsernameCheck>(`/auth/username-available${qs({ username })}`),
   refresh: () => req<LoginResponse>("/auth/refresh"),
   logout: () => req<string>("/auth/logout", { method: "POST" }),
 };
@@ -68,7 +69,8 @@ export const users = {
   businesses: () => req<BusinessMembership[]>("/users/me/businesses"),
   updateProfile: (data: Partial<User>) =>
     req<User>("/users/me", { method: "PUT", body: JSON.stringify(data) }),
-  lookup: (q: string) => req<User>(`/users/lookup${qs({ q })}`),
+  /** Find a person by exact username (public details only). */
+  lookup: (username: string) => req<PublicProfile>(`/users/lookup${qs({ q: username })}`),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<User>("/users/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
 };

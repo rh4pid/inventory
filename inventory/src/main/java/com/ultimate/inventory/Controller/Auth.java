@@ -2,7 +2,7 @@ package com.ultimate.inventory.Controller;
 
 import com.ultimate.inventory.DTO.AuthResult;
 import com.ultimate.inventory.DTO.LoginResponseDTO;
-import com.ultimate.inventory.DTO.RegisterDTO;
+import com.ultimate.inventory.DTO.SignUpDTO;
 import com.ultimate.inventory.DTO.loginDTO;
 import com.ultimate.inventory.Service.AuthService;
 import com.ultimate.inventory.utils.Security;
@@ -15,10 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.WebUtils;
 
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/auth")
@@ -26,7 +24,6 @@ public class Auth {
 
     @Autowired private AuthService authService;
     @Autowired private Security security;
-    @Autowired private jakarta.validation.Validator validator;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> login(@RequestBody @Validated loginDTO dto,
@@ -39,18 +36,21 @@ public class Auth {
         return ResponseEntity.ok(new LoginResponseDTO(result.accessToken(), result.user()));
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> register(@RequestPart("data") RegisterDTO dto,
-                                      @RequestPart(value = "businessLogo", required = false) MultipartFile logo)
-            throws IOException {
-        // Closed by default: say so before complaining about the form.
-        authService.ensureSignUpOpen();
-        var problems = validator.validate(dto);
-        if (!problems.isEmpty()) {
-            throw new com.ultimate.inventory.Exception.AppException(HttpStatus.BAD_REQUEST, problems.iterator().next().getMessage());
-        }
-        authService.register(dto, logo);
-        return ResponseEntity.status(HttpStatus.CREATED).body("Registered successfully. Please login.");
+    /** Creates a personal account and signs it in. */
+    @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> signUp(@RequestBody SignUpDTO dto,
+                                    HttpServletRequest request,
+                                    HttpServletResponse response) {
+        AuthResult result = authService.signUp(dto,
+                request.getHeader("User-Agent"),
+                security.getClientAddress(request));
+        setRefreshCookie(response, result.refreshToken());
+        return ResponseEntity.status(HttpStatus.CREATED).body(new LoginResponseDTO(result.accessToken(), result.user()));
+    }
+
+    @GetMapping("/username-available")
+    public ResponseEntity<?> usernameAvailable(@RequestParam String username) {
+        return ResponseEntity.ok(authService.checkUsername(username));
     }
 
     @GetMapping("/refresh")

@@ -49,7 +49,6 @@ public class UserController {
 
     @GetMapping("/lookup")
     public ResponseEntity<?> lookup(@RequestParam String q) {
-        UserResponseDTO user = userService.lookupUser(q);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userService.lookupUser(q));
     }
 }

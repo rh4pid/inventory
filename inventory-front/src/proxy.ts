@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC = ["/login"];
+const PUBLIC = ["/login", "/register"];
 const REFRESH_COOKIE = "_ultimate_";
 
 /**
  * Coarse guard on the session cookie; the backend checks every request properly.
- * Public sign-up is closed: companies are created by the super admin, people by their admin.
+ * Anyone can create an account at /register; companies are created by their owners.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasCookie = !!request.cookies.get(REFRESH_COOKIE);
-
-  if (pathname.startsWith("/register")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
 
   if (PUBLIC.some((p) => pathname.startsWith(p))) {
     // Signed in already: the app decides where to go (overview, or the admin console).

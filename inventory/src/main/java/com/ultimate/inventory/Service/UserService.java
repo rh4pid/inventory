@@ -29,10 +29,12 @@ public class UserService {
     private final BusinessUserRepo businessUserRepo;
 
     private final com.ultimate.inventory.utils.Security security;
+    private final Usernames usernames;
 
     public UserService(UserRepository userRepo, BusinessUserRepo businessUserRepo,
-                       com.ultimate.inventory.utils.Security security) {
+                       com.ultimate.inventory.utils.Security security, Usernames usernames) {
         this.security = security;
+        this.usernames = usernames;
         this.userRepo = userRepo;
         this.businessUserRepo = businessUserRepo;
     }
@@ -66,20 +68,17 @@ public class UserService {
         User user = requireUser(email);
 
         if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
-            if (!dto.getUsername().equalsIgnoreCase(user.getUsername())) {
-                User existing = userRepo.findByUsername(dto.getUsername());
-                if (existing != null) {
-                    throw new AppException(HttpStatus.CONFLICT, "Username is already taken");
-                }
-            }
-            user.setUsername(dto.getUsername());
+            user.setUsername(usernames.requireAvailable(dto.getUsername(), user.getId()));
+        }
+        if (dto.getFirstName() == null || dto.getFirstName().isBlank() || dto.getLastName() == null || dto.getLastName().isBlank()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "First and last name are required");
         }
 
-        user.setFirstName(dto.getFirstName());
-        user.setOtherName(dto.getOtherName());
-        user.setLastName(dto.getLastName());
-        user.setTelephonePrimary(dto.getTelephonePrimary());
-        user.setTelephoneSecondary(dto.getTelephoneSecondary());
+        user.setFirstName(dto.getFirstName().trim());
+        user.setOtherName(blankToNull(dto.getOtherName()));
+        user.setLastName(dto.getLastName().trim());
+        user.setTelephonePrimary(blankToNull(dto.getTelephonePrimary()));
+        user.setTelephoneSecondary(blankToNull(dto.getTelephoneSecondary()));
         user.setUpdatedAt(new Date());
         user.setUpdatedBy(email);
 
@@ -99,13 +98,24 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public UserResponseDTO lookupUser(String query) {
-        if (query == null || query.isBlank()) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Search query is required");
+    /** What anyone signed in may see about a person they look up: never their email or phone. */
+    public record PublicProfile(Long id, String username, String name, String profilePicture) {}
+
+    /** Finds a person by their exact username (with or without the @). */
+    public PublicProfile lookupUser(String query) {
+        String username = Usernames.clean(query);
+        if (username.isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Enter a username");
         }
-        User user = userRepo.findByEmailOrUsername(query, query)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
-        return new UserResponseDTO(user);
+        User user = userRepo.findByUsername(username);
+        if (user == null || Boolean.TRUE.equals(user.getDeleted()) || Boolean.TRUE.equals(user.getSuperAdmin())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "No one has the username @" + username);
+        }
+        return new PublicProfile(user.getId(), user.getUsername(), UserAccounts.displayName(user), user.getProfilePicture());
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private User requireUser(String email) {

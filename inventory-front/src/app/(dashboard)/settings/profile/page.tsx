@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { useBusiness } from "@/context/BusinessContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
+import { ProfileForm } from "@/components/account/ProfileForm";
 import { Monogram } from "@/components/dashboard/Panel";
 
 export default function ProfilePage() {
@@ -12,13 +13,14 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Profile" description="Your sign-in and password" />
+      <PageHeader title="Profile" description="Your account, username and password" />
       <div className="grid gap-5 md:grid-cols-2">
         <section className="rounded-4xl border border-line/80 bg-surface p-6 shadow-card">
           <div className="flex items-center gap-3">
             <Monogram name={name || "?"} className="h-14 w-14 text-base" />
             <div className="min-w-0">
               <div className="truncate text-lg font-semibold text-ink">{name}</div>
+              {user?.username && <div className="truncate text-sm font-medium text-brand-deep">@{user.username}</div>}
               <div className="truncate text-sm text-ink-3">{user?.email}</div>
             </div>
           </div>
@@ -34,7 +36,11 @@ export default function ProfilePage() {
               </div>
             </dl>
           )}
-          <p className="mt-4 text-xs text-ink-3">To change your name or email, ask your company admin.</p>
+        </section>
+        <section className="rounded-4xl border border-line/80 bg-surface p-6 shadow-card md:row-span-2">
+          <h2 className="mb-4 text-lg font-semibold text-ink">Your details</h2>
+          <ProfileForm key={user?.id} />
+          <p className="mt-4 text-xs text-ink-3">Your account is yours in every company you work with. Your email can&apos;t be changed here.</p>
         </section>
         <section className="rounded-4xl border border-line/80 bg-surface p-6 shadow-card">
           <h2 className="mb-4 text-lg font-semibold text-ink">Change password</h2>

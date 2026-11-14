@@ -1,13 +1,15 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { auth, setToken } from "@/lib/api";
-import type { User, LoginPayload } from "@/Types";
+import type { User, LoginPayload, SignUpPayload, LoginResponse } from "@/Types";
 
 interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   loading: boolean;
   login: (data: LoginPayload) => Promise<User>;
+  /** Create an account and sign straight in. */
+  signUp: (data: SignUpPayload) => Promise<User>;
   /** Replace the signed-in user (e.g. after changing password). */
   setUser: (u: User) => void;
   logout: () => Promise<void>;
@@ -32,13 +34,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (data: LoginPayload) => {
-    const { accessToken: t, user: u } = await auth.login(data);
+  const startSession = useCallback(({ accessToken: t, user: u }: LoginResponse) => {
     setToken(t);
     setAccessToken(t);
     setUser(u);
     return u;
   }, []);
+
+  const login = useCallback(async (data: LoginPayload) => startSession(await auth.login(data)), [startSession]);
+  const signUp = useCallback(async (data: SignUpPayload) => startSession(await auth.signUp(data)), [startSession]);
 
   const logout = useCallback(async () => {
     await auth.logout().catch(() => {});
@@ -48,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, login, signUp, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

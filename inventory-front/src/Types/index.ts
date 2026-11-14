@@ -15,7 +15,15 @@ export interface User {
   mustChangePassword?: boolean;
 }
 
-export interface LoginPayload { email: string; password: string; }
+/** login: email address or username. */
+export interface LoginPayload { login: string; password: string; }
+export interface SignUpPayload {
+  firstName: string; otherName?: string; lastName: string;
+  email: string; username: string; telephonePrimary?: string; password: string;
+}
+export interface UsernameCheck { username: string; available: boolean; reason?: string | null; }
+/** What anyone may see about a person found by username. */
+export interface PublicProfile { id: number; username: string; name: string; profilePicture?: string; }
 export interface LoginResponse { accessToken: string; user: User; }
 
 // ── Business ──────────────────────────────────────────────────────────────────

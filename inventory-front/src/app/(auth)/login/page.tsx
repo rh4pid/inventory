@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,7 @@ import { Label } from "@/components/ui/label";
 const LOGIN_INTRO_MS = 4600;
 
 const schema = z.object({
-  email:    z.string().email("Invalid email"),
+  login:    z.string().trim().min(1, "Enter your email or username"),
   password: z.string().min(1, "Password required"),
 });
 type FormData = z.infer<typeof schema>;
@@ -35,7 +36,7 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
-  const emailField = register("email");
+  const loginField = register("login");
 
   const finish = useCallback(() => { setSkipped(true); setCardOpen(true); }, []);
 
@@ -105,16 +106,17 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="login">Email or username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@company.com"
-                  {...emailField}
-                  ref={(el) => { emailField.ref(el); emailRef.current = el; }}
+                  id="login"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="you@company.com or @username"
+                  {...loginField}
+                  ref={(el) => { loginField.ref(el); emailRef.current = el; }}
                 />
-                {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
+                {errors.login && <p className="text-xs text-red-600">{errors.login.message}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -146,7 +148,8 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-sm text-ink-3">
-              No account yet? Your company administrator creates it for you.
+              No account yet?{" "}
+              <Link href="/register" className="font-medium text-brand-deep hover:underline">Create one</Link>
             </p>
           </div>
         </div>

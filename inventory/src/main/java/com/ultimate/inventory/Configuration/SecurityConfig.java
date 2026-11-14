@@ -37,6 +37,7 @@ public class SecurityConfig {
                         authorizeHttp -> {
                             authorizeHttp.requestMatchers("/auth").permitAll();
                             authorizeHttp.requestMatchers("/auth/refresh").permitAll();
+                            authorizeHttp.requestMatchers("/auth/signup", "/auth/username-available").permitAll();
                             authorizeHttp.anyRequest().authenticated();
                         }
                 )
