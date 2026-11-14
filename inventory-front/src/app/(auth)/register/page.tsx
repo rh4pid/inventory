@@ -7,7 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { errorMessage } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
 import { LogoMark } from "@/components/layout/Logo";
-import { UsernameField, cleanUsername, type UsernameStatus } from "@/components/account/UsernameField";
+import { UsernameField, cleanUsername, usernameProblem, type UsernameStatus } from "@/components/account/UsernameField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +41,19 @@ export default function RegisterPage() {
   };
 
   const checks = passwordRules(f.password);
-  const valid = f.firstName.trim() && f.lastName.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())
-    && usernameStatus === "ok" && checks.every((c) => c.ok);
+  const cleaned = cleanUsername(username);
+  // Only a username we KNOW is bad (or still checking) blocks the form; if the live check
+  // couldn't run, the server checks again on submit.
+  const usernameOk = !!cleaned && !usernameProblem(cleaned) && usernameStatus !== "bad" && usernameStatus !== "checking";
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim());
+  const missing = [
+    !f.firstName.trim() && "first name",
+    !f.lastName.trim() && "last name",
+    !usernameOk && "a free username",
+    !emailOk && "a valid email",
+    !checks.every((c) => c.ok) && "a password with 8+ characters, letters and numbers",
+  ].filter(Boolean) as string[];
+  const valid = missing.length === 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +133,9 @@ export default function RegisterPage() {
             <Button type="submit" className="w-full" disabled={!valid || busy}>
               {busy ? "Creating your account…" : "Create account"}
             </Button>
+            {!valid && !busy && (f.firstName || f.email || f.password) && (
+              <p className="text-center text-xs text-ink-3">Still needed: {missing.join(", ")}.</p>
+            )}
           </form>
 
           <p className="text-center text-sm text-ink-3">

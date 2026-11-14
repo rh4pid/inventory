@@ -47,7 +47,8 @@ export function UsernameField({ id = "username", value, onChange, current, onSta
         const r = await auth.usernameAvailable(u);
         if (!stale) set(r.available ? "ok" : "bad", r.available ? `@${r.username} is free` : (r.reason ?? "Not available"));
       } catch {
-        if (!stale) set("idle", null); // the server will check again on save
+        // Couldn't reach the server: don't block the form, the server checks again on save.
+        if (!stale) set("idle", "Couldn't check right now; we'll check when you continue.");
       }
     }, 400);
     return () => { stale = true; clearTimeout(t); };
