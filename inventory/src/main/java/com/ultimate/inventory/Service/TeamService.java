@@ -79,8 +79,11 @@ public class TeamService {
 
     public record Change(UserRoles role, List<Long> shopIds) {}
 
-    /** temporaryPassword is null when the person already had a sign-in (e.g. from another company). */
-    public record Added(Member member, String temporaryPassword, boolean existingAccount) {}
+    /**
+     * The result of adding someone. A new person: member + their temporary password.
+     * Someone who already has an account: no member yet, an invitation they must accept instead.
+     */
+    public record Added(Member member, String temporaryPassword, boolean existingAccount, SentInvitation invitation) {}
 
     // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -255,6 +258,13 @@ public class TeamService {
         requireCanAssign(actor, role);
         List<Shop> shops = requireShops(req.shopIds(), businessId);
 
+        // Someone who already has an account must accept: they get an invitation, not a membership.
+        User existingUser = accounts.findExisting(req.email());
+        if (existingUser != null) {
+            Invitation inv = openInvitation(business, existingUser, actor, role, shops, email);
+            return new Added(null, null, true, sentView(inv, actor));
+        }
+
         UserAccounts.Provisioned p = accounts.findOrCreate(req.firstName(), req.lastName(), req.email(), req.phone(), email);
         BusinessUser bu = businessUserRepo.findByBusinessAndUser(business, p.user());
         if (bu != null && bu.isActiveMember()) {
@@ -276,7 +286,7 @@ public class TeamService {
         syncLocations(bu, shops, email);
 
         log.info("{} added {} as {} to business {}", email, p.user().getEmail(), role, business.getCode());
-        return new Added(view(bu, actor), p.temporaryPassword(), p.existing());
+        return new Added(view(bu, actor), p.temporaryPassword(), p.existing(), null);
     }
 
     /** Changes a person's role and/or the locations they work at. */
@@ -312,7 +322,7 @@ public class TeamService {
         }
         String temp = accounts.resetToTemporary(bu.getUser(), email);
         log.info("{} reset the password of {} in business {}", email, bu.getUser().getEmail(), businessId);
-        return new Added(view(bu, actor), temp, false);
+        return new Added(view(bu, actor), temp, false, null);
     }
 
     /** Removes the person from the company. Their history (sales, movements) is kept. */

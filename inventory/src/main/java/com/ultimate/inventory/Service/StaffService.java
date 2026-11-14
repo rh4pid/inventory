@@ -196,12 +196,13 @@ public class StaffService {
 
     private BusinessUser upsertBusinessUser(Business business, User user, UserRoles role, BusinessUser actor) {
         BusinessUser bu = businessUserRepo.findByBusinessAndUser(business, user);
-        checkMayChange(actor, bu, role);
-        if (bu == null) {
-            bu = new BusinessUser();
-            bu.setBusiness(business);
-            bu.setUser(user);
+        // People with an account join a company only by accepting an invitation (TeamService.invite);
+        // these older endpoints may only change the role and locations of people already in it.
+        if (bu == null || !bu.isActiveMember()) {
+            throw new AppException(HttpStatus.CONFLICT, UserAccounts.displayName(user) +
+                    " isn't in this company. Invite them by their username from Settings → Team.");
         }
+        checkMayChange(actor, bu, role);
         bu.setRoles(role);
         return businessUserRepo.save(bu);
     }

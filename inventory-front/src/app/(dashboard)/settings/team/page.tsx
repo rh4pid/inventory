@@ -220,7 +220,15 @@ export default function TeamPage() {
       <AddPersonDialog
         open={adding} onClose={() => setAdding(false)} businessId={bizId}
         roles={data.rolesYouCanAssign} locations={locations}
-        onAdded={(r) => { setAdding(false); setHandover(r); load(); refreshLocations(); }}
+        onAdded={(r) => {
+          setAdding(false);
+          if (r.invitation) {
+            toast.success(`${r.invitation.name} already has an account (@${r.invitation.username}), so we sent an invitation. They join when they accept.`);
+          } else {
+            setHandover(r);
+          }
+          load(); refreshLocations();
+        }}
         onInvited={(inv) => { setAdding(false); toast.success(`Invitation sent to @${inv.username}. They join when they accept.`); load(); }}
       />
       {editing && (
@@ -230,7 +238,7 @@ export default function TeamPage() {
       <Dialog open={!!handover} onOpenChange={(o) => !o && setHandover(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{handover?.temporaryPassword ? "Sign-in ready" : "Added to the team"}</DialogTitle></DialogHeader>
-          {handover && (
+          {handover?.member && (
             <CredentialsCard name={handover.member.name} email={handover.member.email}
               temporaryPassword={handover.temporaryPassword} existingAccount={handover.existingAccount} />
           )}
@@ -392,7 +400,7 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
           <p className="text-xs text-ink-3">
             {mode === "invite"
               ? "They get an invitation and join when they accept it."
-              : "We create their account and username and add them straight away. They get a temporary password and choose their own at first sign-in."}
+              : "We create their account and username and add them straight away. They get a temporary password and choose their own at first sign-in. If the email already has an account, they get an invitation instead."}
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

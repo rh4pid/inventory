@@ -74,6 +74,24 @@ public class UserAccounts {
     }
 
     /**
+     * The usable account with this email, or null if there is none.
+     * Refuses the system administrator's and deleted accounts.
+     */
+    public User findExisting(String email) {
+        String e = normalizeEmail(email);
+        User existing = userRepo.findByEmail(e);
+        if (existing == null) existing = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(e);
+        if (existing == null) return null;
+        if (Boolean.TRUE.equals(existing.getSuperAdmin())) {
+            throw new AppException(HttpStatus.CONFLICT, "That email belongs to the system administrator");
+        }
+        if (Boolean.TRUE.equals(existing.getDeleted())) {
+            throw new AppException(HttpStatus.CONFLICT, "That email belongs to a deleted account");
+        }
+        return existing;
+    }
+
+    /**
      * Finds the person's existing sign-in by email, or creates one with a temporary password.
      * An existing account keeps its own password (it may already be used for another company).
      */

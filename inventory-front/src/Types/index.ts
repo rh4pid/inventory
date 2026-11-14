@@ -718,7 +718,13 @@ export interface MyInvitation {
 
 export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[] }
 
-export interface TeamAdded { member: TeamMember; temporaryPassword: string | null; existingAccount: boolean }
+/**
+ * A new person: member + temporary password. Someone who already had an account: no member yet,
+ * an invitation they must accept instead.
+ */
+export interface TeamAdded {
+  member: TeamMember | null; temporaryPassword: string | null; existingAccount: boolean; invitation?: SentInvitation | null;
+}
 
 /** A company's name and contact details (Settings → Business info). */
 export interface BusinessProfile {
