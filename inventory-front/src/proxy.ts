@@ -28,6 +28,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next internals and static files.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:png|jpg|jpeg|svg|webp|ico|txt)$).*)"],
+  // Everything except API calls (forwarded to the backend, which checks auth itself), Next internals and static files.
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\.(?:png|jpg|jpeg|svg|webp|ico|txt)$).*)"],
 };
