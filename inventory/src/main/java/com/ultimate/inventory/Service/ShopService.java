@@ -81,14 +81,9 @@ public class ShopService {
 
     @Transactional
     public void createShopsBulk(Long businessId, MultipartFile file, String userEmail) {
-        Business business = businessRepo.findById(businessId)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Business not found"));
-
-        User user = userRepo.findByEmail(userEmail);
-        BusinessUser businessUser = businessUserRepo.findByBusinessAndUser(business, user);
-        if (businessUser == null) {
-            throw new AppException(HttpStatus.FORBIDDEN, "You do not belong to this business");
-        }
+        // Same rule as creating one location (it used to accept any member, cashiers included).
+        BusinessUser businessUser = accessHelper.requireRole(businessId, userEmail, UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER);
+        Business business = accessHelper.requireBusiness(businessId);
 
         if (file == null || file.isEmpty()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Excel file is required");
