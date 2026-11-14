@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export default function SuppliersPage() {
       const res = await suppliersApi.list(activeBusiness.businessId, { page, size: SIZE });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness, page]);
 
@@ -63,7 +64,7 @@ export default function SuppliersPage() {
       });
       toast.success("Supplier added");
       reset(); setOpen(false); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const handleDelete = async () => {
@@ -73,7 +74,7 @@ export default function SuppliersPage() {
       await suppliersApi.delete(activeBusiness.businessId, deleteId);
       toast.success("Supplier deleted");
       setDeleteId(null); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setDeleting(false);
   };
 
@@ -91,7 +92,7 @@ export default function SuppliersPage() {
         <EmptyState title="No suppliers" description="Add suppliers to track purchase orders."
           action={<Button onClick={() => setOpen(true)}>Add Supplier</Button>} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

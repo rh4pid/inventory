@@ -16,8 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.Date;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class PurchaseService {
 
@@ -30,11 +33,13 @@ public class PurchaseService {
     private final InventoryService inventoryService;
     private final JournalService journalService;
     private final BusinessAccessHelper accessHelper;
+    private final UnitService unitService;
 
     public PurchaseService(InvoiceRepository invoiceRepo, InvoiceDetailRepository detailRepo,
                            ProductRepository productRepo, SupplierRepository supplierRepo,
                            InventoryService inventoryService, JournalService journalService,
-                           BusinessAccessHelper accessHelper) {
+                           BusinessAccessHelper accessHelper, UnitService unitService) {
+        this.unitService = unitService;
         this.invoiceRepo = invoiceRepo;
         this.detailRepo = detailRepo;
         this.productRepo = productRepo;
@@ -46,9 +51,9 @@ public class PurchaseService {
 
     @Transactional
     public Invoice createPurchase(Long businessId, PurchaseDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.RECEIVE);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
 
         Invoice invoice = new Invoice();
         invoice.setBusiness(business);
@@ -73,6 +78,8 @@ public class PurchaseService {
         invoiceRepo.save(saved);
 
         BigDecimal total = BigDecimal.ZERO;
+        boolean tracksBatches = inventoryService.tracksBatches(business);
+        int lineNo = 0;
 
         for (PurchaseItemDTO item : dto.getItems()) {
             Product product = productRepo.findByIdAndBusinessAndDeletedFalse(item.getProductId(), business)
@@ -83,14 +90,42 @@ public class PurchaseService {
                     .multiply(BigDecimal.valueOf(item.getQuantity()))
                     .setScale(2, RoundingMode.HALF_UP);
 
-            inventoryService.addInventory(product, shop, item.getQuantity(),
+            // Bought in a pack size (e.g. 3 Cartons @ 120): stock goes in as base units and the
+            // product's cost is stored per base unit (120 / 24 per piece).
+            UnitService.Conversion conv = unitService.resolve(product, item.getUnitId());
+            double baseQty = conv.toBase(item.getQuantity());
+            BigDecimal baseCost = item.getUnitPrice()
+                    .divide(BigDecimal.valueOf(conv.factor()), 4, RoundingMode.HALF_UP);
+
+            // With batch tracking, each line becomes a lot. Without a supplier lot number, the lot is
+            // named after the purchase so it can always be traced back to this delivery.
+            lineNo++;
+            String batchNumber = null;
+            if (tracksBatches) {
+                if (item.getExpiryDate() != null && item.getExpiryDate().isBefore(LocalDate.now())) {
+                    throw new AppException(HttpStatus.BAD_REQUEST, "'" + product.getProductName() +
+                            "': expiry date " + item.getExpiryDate() + " is in the past");
+                }
+                batchNumber = item.getBatchNumber() != null && !item.getBatchNumber().isBlank()
+                        ? item.getBatchNumber().trim() : saved.getInvoiceNumber() + "/" + lineNo;
+            }
+            inventoryService.receive(product, shop, baseQty,
                     StockMovementType.STOCK_IN, dto.getSupplierId(),
-                    "Purchase #" + saved.getInvoiceNumber(), userEmail);
+                    InventoryService.Ctx.of("Purchase #" + saved.getInvoiceNumber(), userEmail)
+                            .withReference(saved.getInvoiceNumber())
+                            .withEntered(InventoryService.Entered.of(item.getQuantity(), conv)),
+                    BatchService.BatchInfo.of(batchNumber, item.getExpiryDate(), baseCost.doubleValue(),
+                            dto.getSupplierId(), "Purchase #" + saved.getInvoiceNumber()));
 
             InvoiceDetail detail = new InvoiceDetail();
             detail.setInvoice(saved);
             detail.setProduct(product);
             detail.setQuantity(item.getQuantity());
+            detail.setUnitName(conv.isBase() ? null : conv.productUnit().getUnit().getName());
+            detail.setBaseQuantity(baseQty);
+            if (batchNumber != null) {
+                detail.setBatchInfo(batchNumber + (item.getExpiryDate() != null ? " (exp " + item.getExpiryDate() + ")" : ""));
+            }
             detail.setUnitPrice(item.getUnitPrice());
             detail.setCostPrice(item.getUnitPrice());
             detail.setTotalLine(lineTotal);
@@ -101,8 +136,8 @@ public class PurchaseService {
             total = total.add(lineTotal);
 
             if (product.getCostPrice() == null ||
-                    item.getUnitPrice().compareTo(BigDecimal.valueOf(product.getCostPrice())) != 0) {
-                product.setCostPrice(item.getUnitPrice().doubleValue());
+                    baseCost.compareTo(BigDecimal.valueOf(product.getCostPrice())) != 0) {
+                product.setCostPrice(baseCost.doubleValue());
                 product.setUpdatedBy(userEmail);
                 product.setUpdatedAt(new Date());
                 productRepo.save(product);
@@ -125,38 +160,28 @@ public class PurchaseService {
     }
 
     public Page<Invoice> listPurchases(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.RECEIVE);
         Business business = accessHelper.requireBusiness(businessId);
+        java.util.Set<Long> allowed = accessHelper.allowedShopIds(member);
+        if (allowed != null) {
+            if (allowed.isEmpty()) return Page.empty(pageable);
+            return invoiceRepo.findByBusinessAndTypeAndShop_IdIn(business, InvoiceType.PURCHASE, allowed, pageable);
+        }
         return invoiceRepo.findByBusinessAndType(business, InvoiceType.PURCHASE, pageable);
     }
 
     public Invoice getPurchase(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.RECEIVE);
         Business business = accessHelper.requireBusiness(businessId);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));
         if (invoice.getType() != InvoiceType.PURCHASE) {
             throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
         }
+        if (invoice.getShop() != null && !accessHelper.canUseShop(member, invoice.getShop())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
+        }
         return invoice;
-    }
-
-    @Transactional
-    public Invoice voidPurchase(Long businessId, Long invoiceId, String userEmail) {
-        Invoice invoice = getPurchase(businessId, invoiceId, userEmail);
-        if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
-            throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
-        }
-        if (invoice.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            throw new AppException(HttpStatus.CONFLICT,
-                    "Cannot void an invoice with payments.");
-        }
-        invoice.setInvoiceStatus(InvoiceStatus.VOID);
-        invoice.setPaymentStatus(PaymentStatus.VOID);
-        invoice.setUpdatedBy(userEmail);
-        invoice.setUpdatedAt(new Date());
-        log.info("Purchase voided: invoice={} by {}", invoice.getInvoiceNumber(), userEmail);
-        return invoiceRepo.save(invoice);
     }
 
     private String generateInvoiceNumber(Business business, Long id) {

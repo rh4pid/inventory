@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.DTO.ProductDTO;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.DTO.ProductDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.*;
 import com.ultimate.inventory.Repository.*;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class ProductService {
 
@@ -24,10 +27,12 @@ public class ProductService {
     private final UnitRepository unitRepo;
     private final TaxRateRepository taxRateRepo;
     private final BusinessAccessHelper accessHelper;
+    private final InventoryRepository inventoryRepo;
 
     public ProductService(ProductRepository productRepo, CategoryRepository categoryRepo,
                           UnitRepository unitRepo, TaxRateRepository taxRateRepo,
-                          BusinessAccessHelper accessHelper) {
+                          BusinessAccessHelper accessHelper, InventoryRepository inventoryRepo) {
+        this.inventoryRepo = inventoryRepo;
         this.productRepo = productRepo;
         this.categoryRepo = categoryRepo;
         this.unitRepo = unitRepo;
@@ -37,7 +42,7 @@ public class ProductService {
 
     @Transactional
     public Product createProduct(Long businessId, ProductDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         if (dto.getSku() != null && !dto.getSku().isBlank()) {
@@ -58,7 +63,7 @@ public class ProductService {
 
     @Transactional
     public Product updateProduct(Long businessId, Long productId, ProductDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, business)
@@ -88,18 +93,27 @@ public class ProductService {
         accessHelper.requireMembership(businessId, userEmail);
         Business business = accessHelper.requireBusiness(businessId);
         if (search != null && !search.isBlank()) {
-            return productRepo.findByBusinessAndProductNameContainingIgnoreCaseAndDeletedFalse(
-                    business, search, pageable);
+            return productRepo.search(business, search.trim(), pageable);
         }
         return productRepo.findByBusinessAndDeletedFalse(business, pageable);
     }
 
     @Transactional
     public void deleteProduct(Long businessId, Long productId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
         Product product = productRepo.findByIdAndBusinessAndDeletedFalse(productId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Product not found"));
+        // Deleting hides the product everywhere, so its stock would silently vanish from the books.
+        String holding = inventoryRepo.findByProduct(product).stream()
+                .filter(i -> Math.abs(i.getQuantity()) > 1e-9)
+                .map(i -> InventoryService.fmt(i.getQuantity()) + " at " + i.getShop().getShopName())
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (!holding.isEmpty()) {
+            throw new AppException(HttpStatus.CONFLICT, "Cannot delete '" + product.getProductName() +
+                    "' while it still has stock (" + holding + "). Write the stock off, transfer it, " +
+                    "or count it to zero first.");
+        }
         product.setDeleted(true);
         product.setUpdatedBy(userEmail);
         product.setUpdatedAt(new Date());

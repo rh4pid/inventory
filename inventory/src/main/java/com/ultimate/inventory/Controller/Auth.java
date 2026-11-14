@@ -26,6 +26,7 @@ public class Auth {
 
     @Autowired private AuthService authService;
     @Autowired private Security security;
+    @Autowired private jakarta.validation.Validator validator;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> login(@RequestBody @Validated loginDTO dto,
@@ -39,9 +40,15 @@ public class Auth {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> register(@RequestPart("data") @Validated RegisterDTO dto,
+    public ResponseEntity<?> register(@RequestPart("data") RegisterDTO dto,
                                       @RequestPart(value = "businessLogo", required = false) MultipartFile logo)
             throws IOException {
+        // Closed by default: say so before complaining about the form.
+        authService.ensureSignUpOpen();
+        var problems = validator.validate(dto);
+        if (!problems.isEmpty()) {
+            throw new com.ultimate.inventory.Exception.AppException(HttpStatus.BAD_REQUEST, problems.iterator().next().getMessage());
+        }
         authService.register(dto, logo);
         return ResponseEntity.status(HttpStatus.CREATED).body("Registered successfully. Please login.");
     }

@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface UnitRepository extends JpaRepository<Unit, Long> {
     List<Unit> findByBusiness(Business business);
     Optional<Unit> findByIdAndBusiness(Long id, Business business);
+    boolean existsByBusinessAndNameIgnoreCase(Business business, String name);
 }

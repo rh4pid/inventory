@@ -1,245 +1,377 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, ArrowRightLeft, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, ArrowRightLeft, CalendarClock, ClipboardCheck, ClipboardList, SlidersHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useBusiness } from "@/context/BusinessContext";
-import { inventory as invApi, products as productsApi, suppliers as suppliersApi, shops as shopsApi } from "@/lib/api";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useCan, type Capability } from "@/lib/access";
+import { inventory as invApi, suppliers as suppliersApi, shops as shopsApi, stockRequests as requestsApi } from "@/lib/api";
+import { MOVEMENT_LABELS, fmtQty, locationTypeLabel } from "@/constants/Inventory";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
+import { StockActionDialog, type StockAction, type StockActionPreset } from "@/components/inventory/StockActionDialog";
+import { BatchStatusBadge, formatDate } from "@/components/inventory/BatchStatusBadge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import type { Inventory, Product, Supplier, Shop } from "@/Types";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Inventory, Supplier, Shop, StockBatch, StockMovement } from "@/Types";
 
-type ModalType = "in" | "out" | "transfer" | "adjust" | null;
-
-const stockInSchema = z.object({
-  productId: z.coerce.number().min(1, "Required"),
-  shopId: z.coerce.number().min(1, "Required"),
-  quantity: z.coerce.number().positive("Must be positive"),
-  costPrice: z.coerce.number().min(0).optional(),
-  supplierId: z.coerce.number().optional(),
-  notes: z.string().optional(),
-});
+type View = "stock" | "batches" | "history";
 
 export default function InventoryPage() {
+  const can = useCan();
   const { activeBusiness } = useBusiness();
+  const { settings } = useBusinessSettings();
   const [items, setItems] = useState<Inventory[]>([]);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [batches, setBatches] = useState<StockBatch[]>([]);
+  const [expiring, setExpiring] = useState<StockBatch[]>([]);
   const [lowStock, setLowStock] = useState<Inventory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<ModalType>(null);
-  const [prods, setProds] = useState<Product[]>([]);
+  const [action, setAction] = useState<StockAction | null>(null);
+  const [preset, setPreset] = useState<StockActionPreset | undefined>(undefined);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [activeShop, setActiveShop] = useState<string>("all");
+  const [shops, setShops] = useState<Shop[]>([]);       // locations this user works at
+  const [allShops, setAllShops] = useState<Shop[]>([]); // every location (transfer destinations)
+  const [activeShop, setActiveShop] = useState<string>("");
+  const [view, setView] = useState<View>("stock");
+  const [pendingApprovals, setPendingApprovals] = useState(0);
 
-  const { register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(stockInSchema),
-  });
+  const businessId = activeBusiness?.businessId;
+  const trackBatches = Boolean(settings?.trackBatches);
+  const trackExpiry = Boolean(settings?.trackExpiry);
+
+  const loadShop = useCallback(async (shopId: string) => {
+    if (!businessId || !shopId) return;
+    try {
+      const [inv, mv, bt] = await Promise.all([
+        invApi.listByShop(businessId, Number(shopId), { size: 200 }),
+        invApi.movements(businessId, { shopId: Number(shopId), size: 50 }),
+        trackBatches ? invApi.batches(businessId, { shopId: Number(shopId) }) : Promise.resolve([]),
+      ]);
+      setItems(inv.content);
+      setMovements(mv.content);
+      setBatches(bt);
+    } catch (err) { toast.error(errorMessage(err)); }
+  }, [businessId, trackBatches]);
 
   const load = useCallback(async () => {
-    if (!activeBusiness) return;
-    const id = activeBusiness.businessId;
+    if (!businessId) return;
     setLoading(true);
     try {
-      const [low, shopRes, prodRes, supRes] = await Promise.all([
-        invApi.lowStock(id),
-        shopsApi.list(id),
-        productsApi.list(id, { size: 100 }),
-        suppliersApi.list(id, { size: 100 }),
+      const [low, shopRes, allShopRes, supRes, exp, pending] = await Promise.all([
+        invApi.lowStock(businessId),
+        shopsApi.list(businessId, { mine: true }),
+        shopsApi.list(businessId),
+        // Only people who receive stock can see suppliers; others just don't get the list.
+        suppliersApi.list(businessId, { size: 100 }).catch(() => ({ content: [] as Supplier[] })),
+        trackExpiry ? invApi.expiring(businessId) : Promise.resolve([]),
+        requestsApi.pendingCount(businessId).catch(() => ({ count: 0 })),
       ]);
       setLowStock(low);
       setShops(shopRes.content);
-      setProds(prodRes.content);
+      setAllShops(allShopRes.content);
       setSuppliers(supRes.content);
-
-      if (shopRes.content.length > 0) {
-        const first = shopRes.content[0];
-        const inv = await invApi.listByShop(id, first.id, { size: 100 });
-        setItems(inv.content);
-        setActiveShop(String(first.id));
+      setExpiring(exp);
+      setPendingApprovals(pending.count);
+      const current = shopRes.content.find((s) => String(s.id) === activeShop) ?? shopRes.content[0];
+      if (current) {
+        setActiveShop(String(current.id));
+        await loadShop(String(current.id));
       }
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
-  }, [activeBusiness]);
+    // activeShop intentionally omitted: reloading keeps the current tab without re-triggering.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, loadShop, trackExpiry]);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleTabChange = async (shopId: string) => {
-    if (!activeBusiness || shopId === "all") return;
+  const handleTabChange = (shopId: string) => {
     setActiveShop(shopId);
-    try {
-      const inv = await invApi.listByShop(activeBusiness.businessId, Number(shopId), { size: 100 });
-      setItems(inv.content);
-    } catch {}
+    loadShop(shopId);
   };
 
-  const onStockIn = async (data: any) => {
-    if (!activeBusiness) return;
-    try {
-      await invApi.stockIn(activeBusiness.businessId, data);
-      toast.success("Stock added");
-      reset(); setModal(null); load();
-    } catch (err: any) { toast.error(err.message); }
+  const open = (a: StockAction, p?: StockActionPreset) => {
+    setPreset(p ?? (activeShop ? { shopId: Number(activeShop) } : undefined));
+    setAction(a);
   };
 
-  if (loading && items.length === 0) return <PageLoader />;
+  if (loading && shops.length === 0) return <PageLoader />;
+
+  const ACTIONS: { key: StockAction; label: string; icon: typeof ArrowDownToLine; need: Capability }[] = [
+    { key: "in", label: "Stock In", icon: ArrowDownToLine, need: "STOCK_IN" },
+    { key: "out", label: "Stock Out", icon: ArrowUpFromLine, need: "STOCK_OUT" },
+    { key: "transfer", label: "Transfer", icon: ArrowRightLeft, need: "TRANSFER" },
+    { key: "adjust", label: "Adjust", icon: SlidersHorizontal, need: "ADJUST" },
+  ];
+
+  const expired = expiring.filter((b) => b.status === "EXPIRED");
+  const soon = expiring.filter((b) => b.status === "EXPIRING");
+  const views: { key: View; label: string }[] = [
+    { key: "stock", label: "Stock on hand" },
+    ...(trackBatches ? [{ key: "batches" as View, label: "Batches" }] : []),
+    { key: "history", label: "Movement history" },
+  ];
+  const currentView: View = view === "batches" && !trackBatches ? "stock" : view;
 
   return (
     <div>
       <PageHeader
         title="Inventory"
-        description="Track stock levels across all shops"
+        description="Track stock levels and every movement across your locations"
         action={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setModal("in")}>
-              <ArrowDownToLine className="h-4 w-4" /> Stock In
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setModal("out")}>
-              <ArrowUpFromLine className="h-4 w-4" /> Stock Out
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setModal("transfer")}>
-              <ArrowRightLeft className="h-4 w-4" /> Transfer
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setModal("adjust")}>
-              <SlidersHorizontal className="h-4 w-4" /> Adjust
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            {can("COUNT") && (
+              <Link href="/inventory/counts">
+                <Button variant="outline" size="sm"><ClipboardList className="h-4 w-4" /> Stock counts</Button>
+              </Link>
+            )}
+            {can(["APPROVE", "STOCK_OUT", "ADJUST"]) && <Link href="/inventory/approvals">
+              <Button variant="outline" size="sm">
+                <ClipboardCheck className="h-4 w-4" /> {can("APPROVE") ? "Approvals" : "My requests"}
+                {pendingApprovals > 0 && (
+                  <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">{pendingApprovals}</span>
+                )}
+              </Button>
+            </Link>}
+            {ACTIONS.filter((a) => can(a.need)).map((a) => (
+              <Button key={a.key} variant="outline" size="sm" onClick={() => open(a.key)} disabled={shops.length === 0}>
+                <a.icon className="h-4 w-4" /> {a.label}
+              </Button>
+            ))}
           </div>
         }
       />
 
-      {/* Low stock banner */}
-      {lowStock.length > 0 && (
+      {trackExpiry && (expired.length > 0 || soon.length > 0) && (
+        <div className={`mb-4 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 ${
+          expired.length > 0 ? "border-red-200 bg-red-50" : "border-orange-200 bg-orange-50"}`}>
+          <CalendarClock className={`h-5 w-5 shrink-0 ${expired.length > 0 ? "text-red-600" : "text-orange-600"}`} />
+          <p className={`text-sm flex-1 ${expired.length > 0 ? "text-red-800" : "text-orange-800"}`}>
+            {expired.length > 0 && <><strong>{expired.length}</strong> batch{expired.length > 1 ? "es" : ""} expired</>}
+            {expired.length > 0 && soon.length > 0 && " · "}
+            {soon.length > 0 && <><strong>{soon.length}</strong> expiring within {settings?.expiryAlertDays ?? 30} days</>}
+            <span className="block text-xs opacity-80">
+              {expiring.slice(0, 3).map((b) => `${b.productName} (${b.batchNumber}, ${b.shopName})`).join(" · ")}
+              {expiring.length > 3 ? ` · +${expiring.length - 3} more` : ""}
+            </span>
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setView("batches")}>Review batches</Button>
+        </div>
+      )}
+
+      {settings?.lowStockAlerts !== false && lowStock.length > 0 && (
         <div className="mb-4 flex items-center gap-3 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
           <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
           <p className="text-sm text-yellow-800">
-            <strong>{lowStock.length}</strong> product{lowStock.length > 1 ? "s" : ""} running low on stock.
+            <strong>{lowStock.length}</strong> stock line{lowStock.length > 1 ? "s" : ""} at or below reorder level.
           </p>
         </div>
       )}
 
       {shops.length === 0 ? (
-        <EmptyState title="No shops configured" description="Add a shop to your business first." />
+        <EmptyState
+          title="No locations yet"
+          description="Add a shop, warehouse or storeroom under Settings → Locations to start tracking stock."
+        />
       ) : (
-        <Tabs value={activeShop} onValueChange={handleTabChange}>
-          <TabsList className="mb-4">
-            {shops.map((s) => (
-              <TabsTrigger key={s.id} value={String(s.id)}>{s.shopName}</TabsTrigger>
-            ))}
-          </TabsList>
+        <>
+          <Tabs value={activeShop} onValueChange={handleTabChange}>
+            <TabsList className="mb-4 flex-wrap h-auto">
+              {shops.map((s) => (
+                <TabsTrigger key={s.id} value={String(s.id)}>
+                  {s.shopName}
+                  <span className="ml-1.5 text-[10px] uppercase text-gray-400">{locationTypeLabel(s.locationType).split(" ")[0]}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-          {shops.map((s) => (
-            <TabsContent key={s.id} value={String(s.id)}>
-              {items.length === 0 ? (
-                <EmptyState title="No inventory" description="Stock in products to this shop." />
-              ) : (
-                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Reorder</TableHead>
-                        <TableHead>Status</TableHead>
+          <div className="mb-3 flex gap-1 text-sm" role="tablist" aria-label="Inventory view">
+            {views.map((v) => (
+              <button
+                key={v.key} role="tab" aria-selected={currentView === v.key} onClick={() => setView(v.key)}
+                className={`rounded-md px-3 py-1.5 font-medium ${currentView === v.key ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          {currentView === "stock" && (items.length === 0 ? (
+            <EmptyState title="No stock here yet" description="Use Stock In or Transfer to add products to this location." />
+          ) : (
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Reorder at</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((inv) => {
+                    const isLow = inv.product.reorderLevel != null && inv.quantity <= inv.product.reorderLevel;
+                    return (
+                      <TableRow key={inv.id}>
+                        <TableCell className="font-medium text-sm">
+                          <Link href={`/products/${inv.product.id}/edit`} className="hover:underline">{inv.product.productName}</Link>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-gray-500">{inv.product.sku ?? "—"}</TableCell>
+                        <TableCell>
+                          <span className={inv.quantity <= 0 || isLow ? "text-red-600 font-bold" : "font-semibold"}>
+                            {fmtQty(inv.quantity)}
+                          </span>
+                          {inv.product.unit && (
+                            <span className="text-xs text-gray-400 ml-1">{inv.product.unit.symbol ?? inv.product.unit.name}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">{inv.product.reorderLevel ?? "—"}</TableCell>
+                        <TableCell>
+                          {inv.quantity < 0
+                            ? <Badge variant="destructive">Negative</Badge>
+                            : inv.quantity === 0
+                            ? <Badge variant="destructive">Out of stock</Badge>
+                            : isLow
+                            ? <Badge variant="warning">Low stock</Badge>
+                            : <Badge variant="success">In stock</Badge>}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((inv) => {
-                        const isLow = inv.product.reorderLevel != null && inv.quantity <= inv.product.reorderLevel;
-                        return (
-                          <TableRow key={inv.id}>
-                            <TableCell className="font-medium text-sm">{inv.product.productName}</TableCell>
-                            <TableCell className="font-mono text-xs text-gray-500">{inv.product.sku ?? "—"}</TableCell>
-                            <TableCell>
-                              <span className={isLow ? "text-red-600 font-bold" : "font-semibold"}>
-                                {inv.quantity}
-                              </span>
-                              {inv.product.unit && <span className="text-xs text-gray-400 ml-1">{inv.product.unit.symbol}</span>}
-                            </TableCell>
-                            <TableCell className="text-sm">{inv.product.reorderLevel ?? "—"}</TableCell>
-                            <TableCell>
-                              {inv.quantity === 0
-                                ? <Badge variant="destructive">Out of stock</Badge>
-                                : isLow
-                                ? <Badge variant="warning">Low stock</Badge>
-                                : <Badge variant="success">In stock</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ))}
-        </Tabs>
+
+          {currentView === "batches" && (batches.length === 0 ? (
+            <EmptyState title="No batches here" description="Batches are created when stock is received at this location." />
+          ) : (
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Batch / lot</TableHead>
+                    {trackExpiry && <TableHead>Expiry</TableHead>}
+                    <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead>Received</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead className="w-40" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batches.map((b) => (
+                    <TableRow key={b.id} className={b.status === "EXPIRED" ? "bg-red-50/50" : undefined}>
+                      <TableCell className="text-sm font-medium">{b.productName}</TableCell>
+                      <TableCell className="font-mono text-xs">{b.batchNumber}</TableCell>
+                      {trackExpiry && (
+                        <TableCell className="text-sm whitespace-nowrap">
+                          <span className="mr-2">{formatDate(b.expiryDate)}</span>
+                          <BatchStatusBadge batch={b} />
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right text-sm font-semibold">
+                        {fmtQty(b.quantityRemaining)}
+                        <span className="ml-1 text-xs font-normal text-gray-400">{b.baseUnit ?? ""}</span>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">{formatDate(b.receivedAt)}</TableCell>
+                      <TableCell className="text-xs text-gray-500">{b.source ?? "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          {can("STOCK_OUT") && <Button variant="ghost" size="sm"
+                            onClick={() => open("out", { productId: b.productId, shopId: b.shopId, batchId: b.id })}>
+                            {b.status === "EXPIRED" ? "Write off" : "Remove"}
+                          </Button>}
+                          {can("TRANSFER") && <Button variant="ghost" size="sm"
+                            onClick={() => open("transfer", { productId: b.productId, shopId: b.shopId, batchId: b.id })}>
+                            Move
+                          </Button>}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
+
+          {currentView === "history" && (movements.length === 0 ? (
+            <EmptyState title="No movements yet" description="Every stock in, sale, transfer and adjustment will appear here." />
+          ) : (
+            <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Change</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>By</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movements.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs text-gray-500 whitespace-nowrap">
+                        {m.createdAt ? new Date(m.createdAt).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">{m.product.productName}</TableCell>
+                      <TableCell><Badge variant="secondary">{MOVEMENT_LABELS[m.movementType] ?? m.movementType}</Badge></TableCell>
+                      <TableCell className={`text-right font-semibold text-sm ${m.quantityChange < 0 ? "text-red-600" : "text-green-700"}`}>
+                        {m.quantityChange > 0 ? "+" : ""}{fmtQty(m.quantityChange)}
+                        {m.enteredUnit && m.enteredQuantity != null && (
+                          <span className="block text-[11px] font-normal text-gray-400">
+                            {fmtQty(m.enteredQuantity)} × {m.enteredUnit}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">{fmtQty(m.quantityAfter)}</TableCell>
+                      <TableCell className="text-xs text-gray-600 max-w-xs">
+                        {m.notes ?? (m.batchNumber ? "" : "—")}
+                        {m.batchNumber && (
+                          <span className="block font-mono text-[11px] text-gray-400">Batch {m.batchNumber}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">{m.performedBy ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
+        </>
       )}
 
-      {/* Stock In Modal */}
-      <Dialog open={modal === "in"} onOpenChange={(o) => !o && setModal(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Stock In</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onStockIn)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Product *</Label>
-              <Select onValueChange={(v) => setValue("productId", Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-                <SelectContent>
-                  {prods.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.productName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Shop *</Label>
-              <Select onValueChange={(v) => setValue("shopId", Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
-                <SelectContent>
-                  {shops.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.shopName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Quantity *</Label>
-                <Input type="number" min="0.01" step="any" {...register("quantity")} />
-                {errors.quantity && <p className="text-xs text-red-600">{String(errors.quantity.message)}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Cost price (optional)</Label>
-                <Input type="number" step="0.01" {...register("costPrice")} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Supplier (optional)</Label>
-              <Select onValueChange={(v) => setValue("supplierId", Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.companyName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Notes</Label>
-              <Input {...register("notes")} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setModal(null)}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Stock In"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {businessId && (
+        <StockActionDialog
+          key={action ? `${action}-${preset?.batchId ?? ""}-${preset?.productId ?? ""}` : "closed"}
+          action={action}
+          onClose={() => setAction(null)}
+          onDone={load}
+          businessId={businessId}
+          shops={shops}
+          destinations={allShops}
+          suppliers={suppliers}
+          preset={preset}
+          multipleUnits={Boolean(settings?.multipleUnits)}
+          trackBatches={trackBatches}
+          trackExpiry={trackExpiry}
+          needsApproval={Boolean(settings?.requireAdjustmentApproval) && !can("APPROVE")}
+        />
+      )}
     </div>
   );
 }

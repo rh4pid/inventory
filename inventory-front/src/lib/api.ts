@@ -4,8 +4,15 @@ import type {
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
   Invoice, SalePayload, PurchasePayload, Payment, PaymentPayload,
-  Account, AccountPayload, PageResponse, Shop,
+  Account, AccountPayload, PageResponse, Shop, LocationStaff,
   Employee, EmployeePayload, BusinessUser,
+  ShopPayload, Unit, ProductUnit, ProductUnitPayload, StockMovement, StockBatch,
+  StockActionResponse, StockRequest, StockRequestStatus, StockCount, StockCountView,
+  BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
+  InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
+  BusinessProfile, Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
+  AccountingSummary, AccountRef, JournalView, JournalType, Ledger, TrialBalance, ProfitAndLoss, BalanceSheet, CatchUpResult,
+  OwnerMoneyPayload, TransferPayload, ManualJournalPayload, Expense, ExpenseOptions, ExpensePayload, ExpenseStatus,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -62,12 +69,60 @@ export const users = {
   updateProfile: (data: Partial<User>) =>
     req<User>("/users/me", { method: "PUT", body: JSON.stringify(data) }),
   lookup: (q: string) => req<User>(`/users/lookup${qs({ q })}`),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    req<User>("/users/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
 };
 
 // ── Shops ────────────────────────────────────────────────────────────────────
+// Shops are stock locations of any kind (shop, warehouse, storeroom…).
 export const shops = {
+  /** With mine: true, only the locations the current user works at (all of them for managers). */
+  list: (businessId: number, params?: { page?: number; size?: number; mine?: boolean }) =>
+    req<PageResponse<Shop>>(`/general/business/${businessId}/shops${qs({ size: 100, ...params })}`),
+  staff: (businessId: number, shopId: number) =>
+    req<LocationStaff[]>(`/businesses/${businessId}/shops/${shopId}/staff`),
+  assignStaff: (businessId: number, shopId: number, businessUserId: number) =>
+    req<LocationStaff>(`/businesses/${businessId}/shops/${shopId}/staff`, {
+      method: "POST", body: JSON.stringify({ businessUserId }),
+    }),
+  unassignStaff: (businessId: number, shopId: number, assignmentId: number) =>
+    req<void>(`/businesses/${businessId}/shops/${shopId}/staff/${assignmentId}`, { method: "DELETE" }),
+  create: (data: ShopPayload) =>
+    req<unknown>(`/general/shop`, { method: "POST", body: JSON.stringify(data) }),
+  update: (shopId: number, data: ShopPayload) =>
+    req<unknown>(`/general/shop/${shopId}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (shopId: number) =>
+    req<unknown>(`/general/shop/${shopId}`, { method: "DELETE" }),
+};
+
+// ── Business settings & reference data ──────────────────────────────────────
+export const settings = {
+  get: (businessId: number) =>
+    req<BusinessSettings>(`/businesses/${businessId}/settings`),
+  update: (businessId: number, data: BusinessSettingsPayload) =>
+    req<BusinessSettings>(`/businesses/${businessId}/settings`, { method: "PUT", body: JSON.stringify(data) }),
+  businessTypes: () => req<BusinessTypeOption[]>(`/reference/business-types`),
+  profile: (businessId: number) => req<BusinessProfile>(`/businesses/${businessId}/profile`),
+  updateProfile: (businessId: number, data: Omit<BusinessProfile, "id" | "code" | "logo">) =>
+    req<BusinessProfile>(`/businesses/${businessId}/profile`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+// ── Units of measure & product pack sizes ───────────────────────────────────
+export const units = {
   list: (businessId: number) =>
-    req<PageResponse<Shop>>(`/business/${businessId}/shops`),
+    req<Unit[]>(`/businesses/${businessId}/units`),
+  create: (businessId: number, data: { name: string; symbol?: string }) =>
+    req<Unit>(`/businesses/${businessId}/units`, { method: "POST", body: JSON.stringify(data) }),
+  update: (businessId: number, id: number, data: { name: string; symbol?: string }) =>
+    req<Unit>(`/businesses/${businessId}/units/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (businessId: number, id: number) =>
+    req<void>(`/businesses/${businessId}/units/${id}`, { method: "DELETE" }),
+  forProduct: (businessId: number, productId: number) =>
+    req<ProductUnit[]>(`/businesses/${businessId}/products/${productId}/units`),
+  setForProduct: (businessId: number, productId: number, data: ProductUnitPayload[]) =>
+    req<ProductUnit[]>(`/businesses/${businessId}/products/${productId}/units`, {
+      method: "PUT", body: JSON.stringify(data),
+    }),
 };
 
 // ── Products ─────────────────────────────────────────────────────────────────
@@ -130,12 +185,18 @@ export const inventory = {
     req<PageResponse<Inventory>>(`/businesses/${businessId}/shops/${shopId}/inventory${qs(params)}`),
   lowStock: (businessId: number) =>
     req<Inventory[]>(`/businesses/${businessId}/inventory/low-stock`),
+  batches: (businessId: number, params?: { shopId?: number; productId?: number; includeEmpty?: boolean }) =>
+    req<StockBatch[]>(`/businesses/${businessId}/inventory/batches${qs(params)}`),
+  expiring: (businessId: number, params?: { shopId?: number; days?: number }) =>
+    req<StockBatch[]>(`/businesses/${businessId}/inventory/expiring${qs(params)}`),
+  movements: (businessId: number, params?: { shopId?: number; productId?: number; page?: number; size?: number }) =>
+    req<PageResponse<StockMovement>>(`/businesses/${businessId}/inventory/movements${qs(params)}`),
   stockIn: (businessId: number, data: StockInPayload) =>
     req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-in`, {
       method: "POST", body: JSON.stringify(data),
     }),
   stockOut: (businessId: number, data: StockOutPayload) =>
-    req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-out`, {
+    req<StockActionResponse>(`/businesses/${businessId}/shops/${data.shopId}/inventory/stock-out`, {
       method: "POST", body: JSON.stringify(data),
     }),
   transfer: (businessId: number, data: StockTransferPayload) =>
@@ -143,7 +204,7 @@ export const inventory = {
       method: "POST", body: JSON.stringify(data),
     }),
   adjust: (businessId: number, data: StockAdjustmentPayload) =>
-    req<Inventory>(`/businesses/${businessId}/shops/${data.shopId}/inventory/adjust`, {
+    req<StockActionResponse>(`/businesses/${businessId}/shops/${data.shopId}/inventory/adjust`, {
       method: "POST", body: JSON.stringify(data),
     }),
 };
@@ -156,14 +217,67 @@ export const sales = {
     req<Invoice>(`/businesses/${businessId}/sales/${id}`),
   create: (businessId: number, data: SalePayload) =>
     req<Invoice>(`/businesses/${businessId}/sales`, { method: "POST", body: JSON.stringify(data) }),
-  void: (businessId: number, id: number) =>
-    req<Invoice>(`/businesses/${businessId}/sales/${id}/void`, { method: "POST" }),
+  /** Works on paid invoices too: stock goes back, payments are refunded, the books are reversed. */
+  void: (businessId: number, id: number, refundMethod?: PaymentMethod) =>
+    req<Invoice>(`/businesses/${businessId}/sales/${id}/void`, {
+      method: "POST", body: JSON.stringify({ refundMethod }),
+    }),
+  detail: (businessId: number, id: number) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/sales/${id}/detail`),
+  returnItems: (businessId: number, id: number, data: ReturnPayload) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/sales/${id}/returns`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
   recordPayment: (businessId: number, invoiceId: number, data: PaymentPayload) =>
     req<Payment>(`/businesses/${businessId}/sales/${invoiceId}/payments`, {
       method: "POST", body: JSON.stringify(data),
     }),
   listPayments: (businessId: number, invoiceId: number) =>
     req<Payment[]>(`/businesses/${businessId}/sales/${invoiceId}/payments`),
+};
+
+// ── Approvals (stock-outs / adjustments waiting for a manager) ────────────────
+export const stockRequests = {
+  list: (businessId: number, status?: StockRequestStatus) =>
+    req<StockRequest[]>(`/businesses/${businessId}/stock-requests${qs({ status })}`),
+  pendingCount: (businessId: number) =>
+    req<{ count: number }>(`/businesses/${businessId}/stock-requests/pending-count`),
+  approve: (businessId: number, id: number, note?: string) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/approve`, {
+      method: "POST", body: JSON.stringify({ note }),
+    }),
+  reject: (businessId: number, id: number, note?: string) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/reject`, {
+      method: "POST", body: JSON.stringify({ note }),
+    }),
+  cancel: (businessId: number, id: number) =>
+    req<StockRequest>(`/businesses/${businessId}/stock-requests/${id}/cancel`, { method: "POST" }),
+};
+
+// ── Stock counts (stocktakes) ────────────────────────────────────────────────
+export const stockCounts = {
+  list: (businessId: number) =>
+    req<StockCount[]>(`/businesses/${businessId}/stock-counts`),
+  start: (businessId: number, shopId: number, notes?: string) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts`, {
+      method: "POST", body: JSON.stringify({ shopId, notes }),
+    }),
+  get: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}`),
+  addProduct: (businessId: number, id: number, productId: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/lines`, {
+      method: "POST", body: JSON.stringify({ productId }),
+    }),
+  saveCounts: (businessId: number, id: number, entries: { lineId: number; countedQuantity: number | null }[]) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/lines`, {
+      method: "PUT", body: JSON.stringify(entries),
+    }),
+  complete: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/complete`, { method: "POST" }),
+  reopen: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/reopen`, { method: "POST" }),
+  cancel: (businessId: number, id: number) =>
+    req<StockCountView>(`/businesses/${businessId}/stock-counts/${id}/cancel`, { method: "POST" }),
 };
 
 // ── Purchases ────────────────────────────────────────────────────────────────
@@ -174,8 +288,17 @@ export const purchases = {
     req<Invoice>(`/businesses/${businessId}/purchases/${id}`),
   create: (businessId: number, data: PurchasePayload) =>
     req<Invoice>(`/businesses/${businessId}/purchases`, { method: "POST", body: JSON.stringify(data) }),
-  void: (businessId: number, id: number) =>
-    req<Invoice>(`/businesses/${businessId}/purchases/${id}/void`, { method: "POST" }),
+  /** Works on paid invoices too: stock goes back, payments are refunded, the books are reversed. */
+  void: (businessId: number, id: number, refundMethod?: PaymentMethod) =>
+    req<Invoice>(`/businesses/${businessId}/purchases/${id}/void`, {
+      method: "POST", body: JSON.stringify({ refundMethod }),
+    }),
+  detail: (businessId: number, id: number) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/purchases/${id}/detail`),
+  returnItems: (businessId: number, id: number, data: ReturnPayload) =>
+    req<InvoiceDetailView>(`/businesses/${businessId}/purchases/${id}/returns`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
   recordPayment: (businessId: number, invoiceId: number, data: PaymentPayload) =>
     req<Payment>(`/businesses/${businessId}/purchases/${invoiceId}/payments`, {
       method: "POST", body: JSON.stringify(data),
@@ -208,4 +331,84 @@ export const accounts = {
     req<Account>(`/businesses/${businessId}/accounts`, { method: "POST", body: JSON.stringify(data) }),
   update: (businessId: number, id: number, data: AccountPayload) =>
     req<Account>(`/businesses/${businessId}/accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+export const dashboard = {
+  /** Figures for one location (or all my locations) over a period. */
+  get: (businessId: number, params?: { shopId?: number; period?: string }) =>
+    req<DashboardData>(`/businesses/${businessId}/dashboard${qs(params)}`),
+};
+
+// ── Super admin console ──────────────────────────────────────────────────────
+export const admin = {
+  companies: () => req<Company[]>("/admin/companies"),
+  company: (id: number) => req<Company>(`/admin/companies/${id}`),
+  createCompany: (data: CreateCompanyPayload) =>
+    req<CompanyResult>("/admin/companies", { method: "POST", body: JSON.stringify(data) }),
+  updateCompany: (id: number, data: { name?: string; email?: string; contact?: string }) =>
+    req<Company>(`/admin/companies/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  suspend: (id: number) => req<Company>(`/admin/companies/${id}/suspend`, { method: "POST" }),
+  reactivate: (id: number) => req<Company>(`/admin/companies/${id}/reactivate`, { method: "POST" }),
+  addAdmin: (id: number, data: NewPerson) =>
+    req<CompanyResult>(`/admin/companies/${id}/admins`, { method: "POST", body: JSON.stringify(data) }),
+  resetAdminPassword: (id: number, membershipId: number) =>
+    req<CompanyResult>(`/admin/companies/${id}/admins/${membershipId}/reset-password`, { method: "POST" }),
+};
+
+// ── Team (a company's people) ────────────────────────────────────────────────
+export const team = {
+  list: (businessId: number) => req<TeamList>(`/businesses/${businessId}/team`),
+  add: (businessId: number, data: NewTeamMember) =>
+    req<TeamAdded>(`/businesses/${businessId}/team`, { method: "POST", body: JSON.stringify(data) }),
+  update: (businessId: number, memberId: number, data: { role?: UserRole; shopIds?: number[] }) =>
+    req<TeamMember>(`/businesses/${businessId}/team/${memberId}`, { method: "PUT", body: JSON.stringify(data) }),
+  resetPassword: (businessId: number, memberId: number) =>
+    req<TeamAdded>(`/businesses/${businessId}/team/${memberId}/reset-password`, { method: "POST" }),
+  remove: (businessId: number, memberId: number) =>
+    req<void>(`/businesses/${businessId}/team/${memberId}`, { method: "DELETE" }),
+};
+
+// ── Accounting: the books and reports (admins) ───────────────────────────────
+export const accounting = {
+  summary: (businessId: number) => req<AccountingSummary>(`/businesses/${businessId}/accounting/summary`),
+  moneyAccounts: (businessId: number) => req<AccountRef[]>(`/businesses/${businessId}/accounting/money-accounts`),
+  capital: (businessId: number, data: OwnerMoneyPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/capital`, { method: "POST", body: JSON.stringify(data) }),
+  drawings: (businessId: number, data: OwnerMoneyPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/drawings`, { method: "POST", body: JSON.stringify(data) }),
+  transfer: (businessId: number, data: TransferPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/transfers`, { method: "POST", body: JSON.stringify(data) }),
+  journals: (businessId: number, params?: { type?: JournalType; from?: string; to?: string; page?: number; size?: number }) =>
+    req<PageResponse<JournalView>>(`/businesses/${businessId}/accounting/journals${qs(params)}`),
+  manualJournal: (businessId: number, data: ManualJournalPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/journals`, { method: "POST", body: JSON.stringify(data) }),
+  ledger: (businessId: number, accountId: number, params?: { from?: string; to?: string }) =>
+    req<Ledger>(`/businesses/${businessId}/accounting/ledger/${accountId}${qs(params)}`),
+  trialBalance: (businessId: number, asOf?: string) =>
+    req<TrialBalance>(`/businesses/${businessId}/accounting/reports/trial-balance${qs({ asOf })}`),
+  profitLoss: (businessId: number, params?: { from?: string; to?: string }) =>
+    req<ProfitAndLoss>(`/businesses/${businessId}/accounting/reports/profit-loss${qs(params)}`),
+  balanceSheet: (businessId: number, asOf?: string) =>
+    req<BalanceSheet>(`/businesses/${businessId}/accounting/reports/balance-sheet${qs({ asOf })}`),
+  catchUp: (businessId: number) =>
+    req<CatchUpResult>(`/businesses/${businessId}/accounting/catch-up`, { method: "POST" }),
+};
+
+// ── Expenses (petty cash; cashiers' need a manager's approval) ───────────────
+export const expenses = {
+  list: (businessId: number, params?: { status?: ExpenseStatus; shopId?: number; page?: number; size?: number }) =>
+    req<PageResponse<Expense>>(`/businesses/${businessId}/expenses${qs(params)}`),
+  options: (businessId: number) => req<ExpenseOptions>(`/businesses/${businessId}/expenses/options`),
+  pendingCount: (businessId: number) => req<{ count: number }>(`/businesses/${businessId}/expenses/pending-count`),
+  create: (businessId: number, data: ExpensePayload) =>
+    req<Expense>(`/businesses/${businessId}/expenses`, { method: "POST", body: JSON.stringify(data) }),
+  approve: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/approve`, { method: "POST", body: JSON.stringify({ note }) }),
+  reject: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/reject`, { method: "POST", body: JSON.stringify({ note }) }),
+  cancel: (businessId: number, id: number) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/cancel`, { method: "POST" }),
+  void: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/void`, { method: "POST", body: JSON.stringify({ note }) }),
 };

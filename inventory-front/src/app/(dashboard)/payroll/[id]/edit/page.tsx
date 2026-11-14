@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -72,8 +73,8 @@ export default function EditEmployeePage() {
       });
       toast.success("Employee updated");
       router.push("/payroll");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to update");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to update"));
     }
   };
 

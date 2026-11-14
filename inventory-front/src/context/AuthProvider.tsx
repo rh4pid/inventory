@@ -7,7 +7,9 @@ interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   loading: boolean;
-  login: (data: LoginPayload) => Promise<void>;
+  login: (data: LoginPayload) => Promise<User>;
+  /** Replace the signed-in user (e.g. after changing password). */
+  setUser: (u: User) => void;
   logout: () => Promise<void>;
 }
 
@@ -25,7 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(t);
         setUser(u);
       })
-      .catch(() => {})
+      // Expired, revoked or suspended: clear the stale cookie so /login doesn't bounce back here.
+      .catch(() => auth.logout().catch(() => {}))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(t);
     setAccessToken(t);
     setUser(u);
+    return u;
   }, []);
 
   const logout = useCallback(async () => {
@@ -44,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,57 +1,254 @@
 @import "tailwindcss";
 
+/*
+ * Inventory design system, after the dashboard sample: big rounded cards, a saturated blue and
+ * a saturated orange as the two brand colours, an icon rail, and patterned data marks.
+ * Light, warm base and deep navy ink. No black anywhere: Tailwind's gray scale is remapped to
+ * navy-tinted tones, so every existing `text-gray-900` / `bg-gray-50` follows the theme.
+ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
+  /* Brand */
+  --brand-blue: #3563e9;
+  --brand-blue-deep: #2447c7;
+  --brand-blue-soft: #e8eefd;
+  --brand-orange: #f2622e;
+  --brand-orange-deep: #d9481a;
+  --brand-orange-soft: #fde9e1;
+  /* Solid fills that carry white text (buttons, big cards); a shade deeper where needed. */
+  --brand-strong: #3563e9;
+  /* Text on accent fills (navy or white, whichever reads better for the theme). */
+  --on-accent: #1c2541;
+  /* The brand blue/orange names are historical: they hold each theme's main and accent colours (lib/themes.ts). */
+
+  /* Ink & surfaces */
+  --ink: #1c2541;          /* primary text, never black */
+  --ink-2: #434b63;        /* secondary text */
+  --ink-3: #6e7690;        /* muted text */
+  --canvas: #ece6df;       /* behind the app frame */
+  --frame: #f7f4f0;        /* the app frame */
+  --surface: #ffffff;      /* cards */
+  --surface-2: #f1ede8;    /* wells, rail buttons, inputs */
+  --line: #e6e0d8;
+
+  /* Legacy names still used by a few components */
+  --background: var(--frame);
+  --foreground: var(--ink);
+  --card-bg: var(--surface);
+  --card-border: var(--line);
+  --primary: var(--brand-blue);
+  --primary-hover: var(--brand-blue-deep);
   --primary-fg: #ffffff;
-  --destructive: #ef4444;
+  --destructive: #e5484d;
   --destructive-fg: #ffffff;
-  --muted: #f1f5f9;
-  --muted-fg: #64748b;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #3b82f6;
-  --sidebar: #0f172a;
-  --sidebar-fg: #f1f5f9;
-  --sidebar-active: #1e3a5f;
-  --sidebar-hover: #1e293b;
-  --radius: 0.5rem;
+  --muted: var(--surface-2);
+  --muted-fg: var(--ink-3);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand-blue);
+  --radius: 1rem;
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card-bg);
-  --color-primary: var(--primary);
+  --color-card: var(--surface);
+  --color-primary: var(--brand-blue);
   --color-primary-fg: var(--primary-fg);
   --color-destructive: var(--destructive);
-  --color-muted: var(--muted);
-  --color-muted-fg: var(--muted-fg);
-  --color-border: var(--border);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-fg: var(--sidebar-fg);
+  --color-muted: var(--surface-2);
+  --color-muted-fg: var(--ink-3);
+  --color-border: var(--line);
+
+  --color-brand: var(--brand-blue);
+  --color-brand-deep: var(--brand-blue-deep);
+  --color-brand-soft: var(--brand-blue-soft);
+  --color-brand-strong: var(--brand-strong);
+  --color-on-accent: var(--on-accent);
+  --color-accent: var(--brand-orange);
+  --color-accent-deep: var(--brand-orange-deep);
+  --color-accent-soft: var(--brand-orange-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-canvas: var(--canvas);
+  --color-frame: var(--frame);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
 }
 
-* {
-  box-sizing: border-box;
+/* Warm, navy-tinted neutrals instead of Tailwind's gray (whose 900/950 read as black). */
+@theme {
+  /* Light greys follow the theme's tint; darker ones stay navy neutrals (no black). */
+  --color-gray-50: var(--frame);
+  --color-gray-100: var(--surface-2);
+  --color-gray-200: var(--line);
+  --color-gray-300: #d4cdc3;
+  --color-gray-400: #a2a6b5;
+  --color-gray-500: #6e7690;
+  --color-gray-600: #565e78;
+  --color-gray-700: #434b63;
+  --color-gray-800: #2c3450;
+  --color-gray-900: #1c2541;
+  --color-gray-950: #161d36;
+  --color-slate-900: #1c2541;
+  --color-slate-950: #161d36;
+  --color-black: #1c2541;
+
+  /* Tailwind blue → the theme's main colour, so existing buttons and links follow the theme. */
+  --color-blue-50: color-mix(in srgb, var(--brand-blue) 7%, white);
+  --color-blue-100: color-mix(in srgb, var(--brand-blue) 14%, white);
+  --color-blue-200: color-mix(in srgb, var(--brand-blue) 28%, white);
+  --color-blue-300: color-mix(in srgb, var(--brand-blue) 50%, white);
+  --color-blue-400: color-mix(in srgb, var(--brand-blue) 75%, white);
+  --color-blue-500: color-mix(in srgb, var(--brand-blue) 90%, white);
+  --color-blue-600: var(--brand-strong);
+  --color-blue-700: var(--brand-blue-deep);
+  --color-blue-800: color-mix(in srgb, var(--brand-blue-deep) 80%, #1c2541);
+  --color-blue-900: color-mix(in srgb, var(--brand-blue-deep) 60%, #1c2541);
+
+  --radius-4xl: 2rem;
+  --shadow-card: 0 1px 2px rgb(28 37 65 / 0.04), 0 8px 24px -12px rgb(28 37 65 / 0.12);
+  --shadow-float: 0 12px 40px -12px rgb(28 37 65 / 0.25);
+  --shadow-brand: 0 6px 16px -8px color-mix(in srgb, var(--brand-blue) 80%, transparent);
+  --shadow-accent: 0 6px 16px -8px color-mix(in srgb, var(--brand-orange) 85%, transparent);
+  --shadow-brand-lg: 0 18px 40px -20px color-mix(in srgb, var(--brand-blue) 90%, transparent);
+  --shadow-accent-lg: 0 18px 40px -20px color-mix(in srgb, var(--brand-orange) 90%, transparent);
 }
+
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  background: var(--canvas);
+  transition: background-color .3s ease;
+  color: var(--ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* The soft orange/blue glow behind the frame, as in the sample (light version). */
+.app-canvas {
+  background:
+    radial-gradient(60rem 30rem at -10% -20%, color-mix(in srgb, var(--brand-orange) 28%, transparent), transparent 60%),
+    radial-gradient(50rem 26rem at 110% 120%, color-mix(in srgb, var(--brand-blue) 22%, transparent), transparent 60%),
+    radial-gradient(40rem 20rem at 50% 115%, color-mix(in srgb, var(--brand-orange) 16%, transparent), transparent 70%),
+    var(--canvas);
+}
+
+/* ── Pattern fills for data marks (texture keeps categories apart without colour) ── */
+.fill-zigzag {
+  background-color: currentColor;
+  background-image:
+    linear-gradient(135deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(225deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, var(--pattern-bg, transparent) 25%, transparent 25%),
+    linear-gradient(315deg, var(--pattern-bg, transparent) 25%, transparent 25%);
+  background-position: 6px 0, 6px 0, 0 0, 0 0;
+  background-size: 12px 12px;
+}
+.fill-stripes {
+  background-image: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 7px);
+}
+.fill-speckle {
+  background-image:
+    radial-gradient(currentColor 1.2px, transparent 1.6px),
+    radial-gradient(currentColor 1.2px, transparent 1.6px);
+  background-size: 8px 8px, 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+.fill-fade {
+  background-image: linear-gradient(180deg, currentColor, transparent 140%);
+}
+
+/* Rail tooltips */
+.rail-tip {
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(-4px);
+  white-space: nowrap; pointer-events: none; opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.group:hover > .rail-tip, .group:focus-visible > .rail-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: #d4cdc3; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #a2a6b5; background-clip: content-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ── Login intro (components/auth/WarehouseScene.tsx) ─────────────────────────
+   0.3–3.4s  the person walks in pushing the hand truck (legs, bob, wheel)
+   3.5s      the top box hops from the truck onto the stack, lands at 4.2s
+   ~4.6s     the login card appears (LoginPage)
+   .lg-skip jumps everything to its final frame. Times are in step with LOGIN_INTRO_MS. */
+
+/* Person + truck glide in from the left with a natural ease. */
+.lg-mover { animation: lg-push 3.2s cubic-bezier(.16,.8,.3,1) .3s both; }
+@keyframes lg-push {
+  from { transform: translateX(-340px); opacity: 0.6; }
+  10%  { opacity: 1; }
+  to   { transform: translateX(296px); }
+}
+
+/* Walking legs: alternate swing, tight pivot at the hip. */
+.lg-leg { transform-box: fill-box; transform-origin: 50% 0; }
+.lg-leg-front { animation: lg-step .6s ease-in-out .3s 5 both; }
+.lg-leg-back  { animation: lg-step-alt .6s ease-in-out .3s 5 both; }
+@keyframes lg-step     { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(14deg); } }
+@keyframes lg-step-alt { 0%,100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-18deg); } }
+
+/* Subtle body bob in sync with the step cycle. */
+.lg-bob { animation: lg-bob .3s ease-in-out .3s 10 both; }
+@keyframes lg-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* Wheel spin. */
+.lg-wheel { transform-box: fill-box; transform-origin: 50% 50%; animation: lg-spin .6s linear .3s 5 both; }
+@keyframes lg-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* The truck's top box is hidden the moment the free hop-box takes over. */
+.lg-truckbox { animation: lg-hide 1ms linear 3.5s both; }
+@keyframes lg-hide { to { opacity: 0; } }
+
+.lg-hopwrap { opacity: 0; animation: lg-show 1ms linear 3.5s forwards; }
+@keyframes lg-show { to { opacity: 1; } }
+
+/* Box arcs from the truck up and over to the top of the stack. */
+.lg-hop { animation: lg-hop .75s cubic-bezier(.25,.6,.35,1) 3.5s both; }
+@keyframes lg-hop {
+  0%   { transform: translate(535px, 348px) rotate(-14deg); }
+  50%  { transform: translate(650px, 185px) rotate(-4deg); }
+  100% { transform: translate(759px, 255px) rotate(0); }
+}
+
+/* Box squash-and-stretch on landing. */
+.lg-land { transform-box: fill-box; transform-origin: 50% 100%; animation: lg-land .32s cubic-bezier(.22,.9,.4,1) 4.25s both; }
+@keyframes lg-land {
+  0%   { transform: scale(1.06, .88); }
+  55%  { transform: scale(.97, 1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Small dust puff on landing. */
+.lg-dust { opacity: 0; transform-box: fill-box; transform-origin: 50% 100%; animation: lg-dust .55s ease-out 4.25s both; }
+@keyframes lg-dust { 0% { opacity: .8; transform: scale(.3); } 100% { opacity: 0; transform: scale(1.7) translateY(-8px); } }
+
+/* Login card: lifts in gently. */
+.lg-card { animation: lg-card .5s cubic-bezier(.16,.9,.3,1.08) both; }
+@keyframes lg-card { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+.lg-veil { animation: lg-veil .45s ease-out both; }
+@keyframes lg-veil { from { opacity: 0; } to { opacity: 1; } }
+
+/* Skip: every timeline animation lands on its last frame immediately. */
+.lg-skip .lg-a { animation-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+.lg-skip .lg-dust { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-mover, .lg-leg-front, .lg-leg-back, .lg-bob, .lg-wheel,
+  .lg-hop, .lg-land, .lg-dust, .lg-card, .lg-veil { animation: none !important; }
+}

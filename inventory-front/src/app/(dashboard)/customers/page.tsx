@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useCan } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { customers as customersApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import type { Customer } from "@/Types";
 
 const schema = z.object({
@@ -29,6 +30,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function CustomersPage() {
+  const canDelete = useCan()("DELETE_CUSTOMERS");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
@@ -50,7 +52,7 @@ export default function CustomersPage() {
       const res = await customersApi.list(activeBusiness.businessId, { page, size: SIZE });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness, page]);
 
@@ -64,7 +66,7 @@ export default function CustomersPage() {
       });
       toast.success("Customer added");
       reset(); setOpen(false); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const handleDelete = async () => {
@@ -74,7 +76,7 @@ export default function CustomersPage() {
       await customersApi.delete(activeBusiness.businessId, deleteId);
       toast.success("Customer deleted");
       setDeleteId(null); load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setDeleting(false);
   };
 
@@ -92,7 +94,7 @@ export default function CustomersPage() {
         <EmptyState title="No customers" description="Add customers to track sales history and loyalty."
           action={<Button onClick={() => setOpen(true)}>Add Customer</Button>} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -111,10 +113,10 @@ export default function CustomersPage() {
                   <TableCell className="text-sm text-gray-500">{c.phone ?? "—"}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(c.totalPurchases)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"
-                      onClick={() => setDeleteId(c.id)}>
+                    {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500"
+                      onClick={() => setDeleteId(c.id)} aria-label={`Delete ${c.firstName}`}>
                       <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </Button>}
                   </TableCell>
                 </TableRow>
               ))}

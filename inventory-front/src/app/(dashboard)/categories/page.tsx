@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,8 +44,8 @@ export default function CategoriesPage() {
     try {
       const list = await catsApi.list(activeBusiness.businessId);
       setCats(list);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(errorMessage(err));
     } finally { setLoading(false); }
   }, [activeBusiness]);
 
@@ -61,7 +62,7 @@ export default function CategoriesPage() {
       reset();
       setOpen(false);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
   };
 
   const handleDelete = async () => {
@@ -72,7 +73,7 @@ export default function CategoriesPage() {
       toast.success("Deleted");
       setDeleteId(null);
       load();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setDeleting(false);
   };
 
@@ -97,7 +98,7 @@ export default function CategoriesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {roots.map((cat) => (
-            <div key={cat.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div key={cat.id} className="rounded-3xl border border-line/80 bg-surface shadow-card p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">{cat.categoryName}</p>

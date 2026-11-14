@@ -67,6 +67,10 @@ public class Invoice extends Model {
     @Column(name = "amount_paid", precision = 19, scale = 2)
     private BigDecimal amountPaid = BigDecimal.ZERO;
 
+    /** Value of goods returned against this invoice (credit notes). Balance due = total - returned - paid. */
+    @Column(name = "returned_amount", precision = 19, scale = 2)
+    private BigDecimal returnedAmount = BigDecimal.ZERO;
+
     @Column(name = "due_date")
     private Date dueDate;
 

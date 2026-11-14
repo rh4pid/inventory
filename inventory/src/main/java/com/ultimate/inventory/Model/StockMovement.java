@@ -41,6 +41,25 @@ public class StockMovement extends Model {
     @Column(name = "supplier_id")
     private Long supplierId;
 
+    /** Quantity as the user entered it, before conversion to the base unit (e.g. 2). */
+    @Column(name = "entered_quantity")
+    private Double enteredQuantity;
+
+    /** Unit the user entered it in (e.g. "Carton (24)"); null = base unit. */
+    @Column(name = "entered_unit")
+    private String enteredUnit;
+
+    /** Batch this movement touched, when the business tracks batches. */
+    @Column(name = "batch_id")
+    private Long batchId;
+
+    @Column(name = "batch_number", length = 80)
+    private String batchNumber;
+
+    /** Manager who approved this change, when it needed approval. */
+    @Column(name = "approved_by")
+    private String approvedBy;
+
     @Column(name = "performed_by")
     private String performedBy;
 }

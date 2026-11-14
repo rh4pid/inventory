@@ -39,6 +39,29 @@ public class AuthService {
     @Autowired private BusinessUserRepo businessUserRepo;
     @Autowired private Security security;
     @Autowired private FileStorage fileStorage;
+    @Autowired private AccountService accountService;
+    @org.springframework.beans.factory.annotation.Value("${app.self-signup:false}") private boolean selfSignUp;
+
+    public void ensureSignUpOpen() {
+        if (!selfSignUp) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Sign-up is closed. Ask your company administrator for an account.");
+        }
+    }
+
+    /** Disabled, deleted or suspended accounts, and people whose companies are all suspended, cannot sign in. */
+    private void ensureCanSignIn(User user) {
+        if (Boolean.TRUE.equals(user.getDeleted()) || Boolean.TRUE.equals(user.getLocked()) || Boolean.TRUE.equals(user.getSuspended())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "This account is disabled. Contact your administrator.");
+        }
+        if (Boolean.TRUE.equals(user.getSuperAdmin())) return;
+        var memberships = businessUserRepo.findByUser(user).stream()
+                .filter(BusinessUser::isActiveMember)
+                .filter(bu -> !Boolean.TRUE.equals(bu.getBusiness().getDeleted()))
+                .toList();
+        if (!memberships.isEmpty() && memberships.stream().allMatch(bu -> Boolean.TRUE.equals(bu.getBusiness().getSuspended()))) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Your company account is suspended. Contact the system administrator.");
+        }
+    }
 
     @Transactional
     public AuthResult login(loginDTO dto, String deviceInfo, String ipAddress) {
@@ -46,6 +69,7 @@ public class AuthService {
         if (user == null || !security.isPassword(dto.getPassword(), user.getPassword())) {
             throw new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
+        ensureCanSignIn(user);
 
         String rawToken = security.generateRefreshToken();
         RefreshTokens refreshToken = new RefreshTokens();
@@ -61,8 +85,13 @@ public class AuthService {
         return new AuthResult(accessToken, rawToken, new UserResponseDTO(user));
     }
 
+    /**
+     * Disabled, kept for reference: companies and their admins are now created by the super admin,
+     * and employees by their company admin (see AdminService / TeamService).
+     */
     @Transactional
     public void register(RegisterDTO dto, MultipartFile businessLogo) throws IOException {
+        ensureSignUpOpen();
         if (userRepo.findByEmail(dto.getEmail()) != null) {
             throw new AppException(HttpStatus.CONFLICT, "Email already registered");
         }
@@ -96,6 +125,7 @@ public class AuthService {
         business = businessRepo.save(business);
         business.setCode("BIZ" + String.format("%05d", business.getId()));
         businessRepo.save(business);
+        accountService.ensureDefaults(business, user.getEmail()); // standard chart of accounts
 
         BusinessUser businessUser = new BusinessUser();
         businessUser.setBusiness(business);
@@ -114,6 +144,7 @@ public class AuthService {
         if (token == null || !token.getExpiryDate().after(new Date())) {
             throw new AppException(HttpStatus.UNAUTHORIZED, "Session expired. Please login again.");
         }
+        ensureCanSignIn(token.getUser());
         String accessToken = security.generateAccessToken(token.getUser().getId(), token.getUser().getEmail());
         return new AuthResult(accessToken, null, new UserResponseDTO(token.getUser()));
     }

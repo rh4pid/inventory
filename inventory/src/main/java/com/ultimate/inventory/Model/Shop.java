@@ -1,5 +1,6 @@
 package com.ultimate.inventory.Model;
 
+import com.ultimate.inventory.Constants.LocationType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,6 +20,11 @@ public class Shop extends Model {
 
     @Column(name = "shop_name")
     private String shopName;
+
+    /** What kind of stock location this is (shop, warehouse, storeroom…). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location_type", length = 20)
+    private LocationType locationType = LocationType.SHOP;
 
     @Column(name = "shop_location")
     private String shopLocation;

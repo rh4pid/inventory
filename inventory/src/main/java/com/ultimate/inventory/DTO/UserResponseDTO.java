@@ -16,8 +16,12 @@ public class UserResponseDTO {
     private String telephonePrimary;
     private String telephoneSecondary;
     private String profilePicture;
+    private boolean superAdmin;
+    private boolean mustChangePassword;
 
     public UserResponseDTO(User user) {
+        this.superAdmin = Boolean.TRUE.equals(user.getSuperAdmin());
+        this.mustChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
         this.id = user.getId();
         this.firstName = user.getFirstName();
         this.otherName = user.getOtherName();

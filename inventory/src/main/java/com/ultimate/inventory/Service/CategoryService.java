@@ -1,6 +1,7 @@
 package com.ultimate.inventory.Service;
 
-import com.ultimate.inventory.DTO.CategoryDTO;
+
+import com.ultimate.inventory.Constants.Capability;import com.ultimate.inventory.DTO.CategoryDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.Business;
 import com.ultimate.inventory.Model.Category;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.List;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class CategoryService {
 
@@ -29,7 +32,7 @@ public class CategoryService {
 
     @Transactional
     public Category createCategory(Long businessId, CategoryDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         Category category = new Category();
@@ -63,7 +66,7 @@ public class CategoryService {
 
     @Transactional
     public Category updateCategory(Long businessId, Long categoryId, CategoryDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         Category category = categoryRepo.findByIdAndBusinessAndDeletedFalse(categoryId, business)
@@ -89,7 +92,7 @@ public class CategoryService {
 
     @Transactional
     public void deleteCategory(Long businessId, Long categoryId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        accessHelper.requireCapability(businessId, userEmail, Capability.MANAGE_CATALOG);
         Business business = accessHelper.requireBusiness(businessId);
 
         Category category = categoryRepo.findByIdAndBusinessAndDeletedFalse(categoryId, business)

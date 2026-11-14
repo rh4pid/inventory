@@ -11,12 +11,14 @@ import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentStatusBadge, InvoiceStatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, errorMessage } from "@/lib/utils";
+import { InvoiceDialog } from "@/components/shared/InvoiceDialog";
 import type { Invoice } from "@/Types";
 
 export default function SalesPage() {
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Invoice[]>([]);
+  const [opened, setOpened] = useState<Invoice | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export default function SalesPage() {
       const res = await salesApi.list(activeBusiness.businessId, { page, size: SIZE });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) { toast.error(errorMessage(err)); }
     setLoading(false);
   }, [activeBusiness, page]);
 
@@ -57,7 +59,7 @@ export default function SalesPage() {
           action={<Link href="/sales/new"><Button>New Sale</Button></Link>}
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -68,11 +70,12 @@ export default function SalesPage() {
                 <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((s) => (
-                <TableRow key={s.id} className="cursor-pointer">
+                <TableRow key={s.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setOpened(s)}>
                   <TableCell className="font-mono text-xs">{s.invoiceNumber}</TableCell>
                   <TableCell className="text-sm">
                     {s.customer
@@ -85,6 +88,9 @@ export default function SalesPage() {
                   <TableCell><InvoiceStatusBadge status={s.invoiceStatus} /></TableCell>
                   <TableCell className="text-xs text-gray-500">
                     {s.createdAt ? formatDate(s.createdAt) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpened(s); }}>Open</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -107,6 +113,9 @@ export default function SalesPage() {
             </div>
           )}
         </div>
+      )}
+      {opened && (
+        <InvoiceDialog invoice={opened} onClose={() => setOpened(null)} onChanged={load} />
       )}
     </div>
   );

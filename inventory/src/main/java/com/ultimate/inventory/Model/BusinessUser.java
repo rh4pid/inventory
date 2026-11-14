@@ -21,4 +21,10 @@ public class BusinessUser extends Model {
 
     @Enumerated(EnumType.STRING)
     private UserRoles roles;
+
+    /** False once removed from the company (kept so their past sales and movements still point at them). */
+    @Column(name = "active")
+    private Boolean active = true;
+
+    public boolean isActiveMember() { return !Boolean.FALSE.equals(active); }
 }

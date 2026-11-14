@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
@@ -6,7 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { products as productsApi, categories as categoriesApi } from "@/lib/api";
+import { products as productsApi, categories as categoriesApi, units as unitsApi } from "@/lib/api";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { PackSizesEditor, toPackPayload, type PackRow } from "@/components/products/PackSizesEditor";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Category } from "@/Types";
+import type { Category, Unit } from "@/Types";
 
 const schema = z.object({
   productName:   z.string().min(1, "Required"),
@@ -25,6 +28,7 @@ const schema = z.object({
   sellingPrice:  z.coerce.number().positive("Must be positive"),
   reorderLevel:  z.coerce.number().min(0).optional(),
   categoryId:    z.coerce.number().optional(),
+  unitId:        z.coerce.number().optional(),
   discountType:  z.string().optional(),
   discountValue: z.coerce.number().min(0).optional(),
 });
@@ -35,29 +39,46 @@ export default function NewProductPage() {
   const router = useRouter();
   const { activeBusiness } = useBusiness();
   const [cats, setCats] = useState<Category[]>([]);
+  const [unitList, setUnitList] = useState<Unit[]>([]);
+  const [packRows, setPackRows] = useState<PackRow[]>([]);
+  const { settings } = useBusinessSettings();
 
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
   });
+  const baseUnitId = watch("unitId");
 
   useEffect(() => {
     if (!activeBusiness) return;
     categoriesApi.list(activeBusiness.businessId)
       .then((list) => setCats(list))
       .catch(() => {});
-  }, [activeBusiness]);
+    unitsApi.list(activeBusiness.businessId)
+      .then((list) => {
+        setUnitList(list);
+        const piece = list.find((u) => u.name === "Piece");
+        if (piece) setValue("unitId", piece.id);
+      })
+      .catch(() => {});
+  }, [activeBusiness, setValue]);
 
   const onSubmit = async (data: FormData) => {
     if (!activeBusiness) return;
+    const packs = settings?.multipleUnits ? toPackPayload(packRows) : [];
+    if (typeof packs === "string") { toast.error(packs); return; }
     try {
-      await productsApi.create(activeBusiness.businessId, {
+      const created = await productsApi.create(activeBusiness.businessId, {
         ...data,
         categoryId: data.categoryId || undefined,
+        unitId: data.unitId || undefined,
       });
+      if (packs.length > 0) {
+        await unitsApi.setForProduct(activeBusiness.businessId, created.id, packs);
+      }
       toast.success("Product created");
       router.push("/products");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create product");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to create product"));
     }
   };
 
@@ -129,6 +150,28 @@ export default function NewProductPage() {
                 <Input type="number" step="0.01" min="0" placeholder="0" {...register("discountValue")} />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Units</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Base unit (how stock is counted)</Label>
+              <Select value={baseUnitId ? String(baseUnitId) : ""} onValueChange={(v) => setValue("unitId", Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                <SelectContent>
+                  {unitList.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">Cost and selling price above are per base unit.</p>
+            </div>
+            {settings?.multipleUnits && (
+              <div className="space-y-1.5">
+                <Label>Pack sizes</Label>
+                <PackSizesEditor units={unitList} baseUnitId={baseUnitId} rows={packRows} onChange={setPackRows} />
+              </div>
+            )}
           </CardContent>
         </Card>
 

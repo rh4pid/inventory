@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -59,8 +60,8 @@ export default function NewEmployeePage() {
       });
       toast.success("Employee added");
       router.push("/payroll");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to add employee");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to add employee"));
     }
   };
 

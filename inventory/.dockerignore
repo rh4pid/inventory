@@ -1,0 +1,9 @@
+.git
+.gitignore
+.idea
+.vscode
+target
+*.iml
+local-secrets.properties
+SUPER_ADMIN_CREDENTIALS.txt
+TEST_COMPANY_LOGINS.txt

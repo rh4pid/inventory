@@ -34,6 +34,13 @@ public class UserController {
         return ResponseEntity.ok(updated);
     }
 
+    public record PasswordChange(String currentPassword, String newPassword) {}
+
+    @PostMapping("/me/password")
+    public ResponseEntity<?> changePassword(@AuthenticationPrincipal String email, @RequestBody PasswordChange body) {
+        return ResponseEntity.ok(userService.changePassword(email, body.currentPassword(), body.newPassword()));
+    }
+
     @GetMapping("/me/businesses")
     public ResponseEntity<?> getMyBusinesses(@AuthenticationPrincipal String email) {
         List<BusinessMembershipDTO> businesses = userService.getMyBusinesses(email);

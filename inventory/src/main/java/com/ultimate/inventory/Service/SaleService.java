@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class SaleService {
 
@@ -32,11 +34,13 @@ public class SaleService {
     private final InventoryService inventoryService;
     private final JournalService journalService;
     private final BusinessAccessHelper accessHelper;
+    private final UnitService unitService;
 
     public SaleService(InvoiceRepository invoiceRepo, InvoiceDetailRepository detailRepo,
                        ProductRepository productRepo, CustomerRepository customerRepo,
                        InventoryService inventoryService, JournalService journalService,
-                       BusinessAccessHelper accessHelper) {
+                       BusinessAccessHelper accessHelper, UnitService unitService) {
+        this.unitService = unitService;
         this.invoiceRepo = invoiceRepo;
         this.detailRepo = detailRepo;
         this.productRepo = productRepo;
@@ -48,9 +52,9 @@ public class SaleService {
 
     @Transactional
     public Invoice createSale(Long businessId, SaleDTO dto, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
-        Shop shop = accessHelper.requireShopInBusiness(dto.getShopId(), businessId);
+        Shop shop = accessHelper.requireShopAccess(dto.getShopId(), businessId, member);
 
         Invoice invoice = new Invoice();
         invoice.setBusiness(business);
@@ -83,25 +87,46 @@ public class SaleService {
                     .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND,
                             "Product not found: " + item.getProductId()));
 
-            BigDecimal unitPrice = item.getUnitPrice() != null
-                    ? item.getUnitPrice()
-                    : BigDecimal.valueOf(product.getSellingPrice());
+            // Quantity may be entered in a pack size (e.g. 2 Cartons); stock moves in base units.
+            UnitService.Conversion conv = unitService.resolve(product, item.getUnitId());
+            double baseQty = conv.toBase(item.getQuantity());
+            BigDecimal factor = BigDecimal.valueOf(conv.factor());
+
+            BigDecimal unitPrice;
+            if (item.getUnitPrice() != null) {
+                unitPrice = item.getUnitPrice();
+            } else if (conv.productUnit() != null && conv.productUnit().getSellingPrice() != null) {
+                unitPrice = BigDecimal.valueOf(conv.productUnit().getSellingPrice());
+            } else {
+                unitPrice = BigDecimal.valueOf(product.getSellingPrice()).multiply(factor)
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
 
             BigDecimal lineDiscount = item.getDiscountAmount() != null ? item.getDiscountAmount() : BigDecimal.ZERO;
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()))
                     .subtract(lineDiscount).setScale(2, RoundingMode.HALF_UP);
 
-            BigDecimal costPrice = BigDecimal.valueOf(product.getCostPrice() != null ? product.getCostPrice() : 0.0);
-            BigDecimal lineCogs = costPrice.multiply(BigDecimal.valueOf(item.getQuantity()))
-                    .setScale(2, RoundingMode.HALF_UP);
+            InventoryService.Deduction taken = inventoryService.deduct(product, shop, baseQty,
+                    StockMovementType.SALE,
+                    InventoryService.Ctx.of("Sale #" + saved.getInvoiceNumber(), userEmail)
+                            .withReference(saved.getInvoiceNumber())
+                            .withEntered(InventoryService.Entered.of(item.getQuantity(), conv)),
+                    item.getBatchId());
 
-            inventoryService.deductInventory(product, shop, item.getQuantity(),
-                    StockMovementType.SALE, "Sale #" + saved.getInvoiceNumber(), userEmail);
+            // Cost of goods sold uses each batch's own cost when batches are tracked.
+            double productCost = product.getCostPrice() != null ? product.getCostPrice() : 0.0;
+            BigDecimal lineCogs = BigDecimal.valueOf(taken.slices().isEmpty()
+                            ? productCost * baseQty : taken.cost(productCost))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal costPrice = lineCogs.divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP);
 
             InvoiceDetail detail = new InvoiceDetail();
             detail.setInvoice(saved);
             detail.setProduct(product);
             detail.setQuantity(item.getQuantity());
+            detail.setUnitName(conv.isBase() ? null : conv.productUnit().getUnit().getName());
+            detail.setBaseQuantity(baseQty);
+            detail.setBatchInfo(taken.batchSummary());
             detail.setUnitPrice(unitPrice);
             detail.setCostPrice(costPrice);
             detail.setDiscountAmount(lineDiscount);
@@ -141,38 +166,28 @@ public class SaleService {
     }
 
     public Page<Invoice> listSales(Long businessId, String userEmail, Pageable pageable) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
+        java.util.Set<Long> allowed = accessHelper.allowedShopIds(member);
+        if (allowed != null) {
+            if (allowed.isEmpty()) return Page.empty(pageable);
+            return invoiceRepo.findByBusinessAndTypeAndShop_IdIn(business, InvoiceType.SALES, allowed, pageable);
+        }
         return invoiceRepo.findByBusinessAndType(business, InvoiceType.SALES, pageable);
     }
 
     public Invoice getSale(Long businessId, Long invoiceId, String userEmail) {
-        accessHelper.requireMembership(businessId, userEmail);
+        BusinessUser member = accessHelper.requireCapability(businessId, userEmail, Capability.SELL);
         Business business = accessHelper.requireBusiness(businessId);
         Invoice invoice = invoiceRepo.findByIdAndBusiness(invoiceId, business)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invoice not found"));
         if (invoice.getType() != InvoiceType.SALES) {
             throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
         }
+        if (invoice.getShop() != null && !accessHelper.canUseShop(member, invoice.getShop())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Invoice not found");
+        }
         return invoice;
-    }
-
-    @Transactional
-    public Invoice voidSale(Long businessId, Long invoiceId, String userEmail) {
-        Invoice invoice = getSale(businessId, invoiceId, userEmail);
-        if (invoice.getInvoiceStatus() == InvoiceStatus.VOID) {
-            throw new AppException(HttpStatus.CONFLICT, "Invoice is already void");
-        }
-        if (invoice.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            throw new AppException(HttpStatus.CONFLICT,
-                    "Cannot void an invoice with payments. Reverse the payments first.");
-        }
-        invoice.setInvoiceStatus(InvoiceStatus.VOID);
-        invoice.setPaymentStatus(PaymentStatus.VOID);
-        invoice.setUpdatedBy(userEmail);
-        invoice.setUpdatedAt(new Date());
-        log.info("Sale voided: invoice={} by {}", invoice.getInvoiceNumber(), userEmail);
-        return invoiceRepo.save(invoice);
     }
 
     private String generateInvoiceNumber(Business business, InvoiceType type, Long id) {

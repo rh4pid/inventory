@@ -1,0 +1,9 @@
+.git
+node_modules
+.next
+out
+.env*
+*.tsbuildinfo
+package-lock.json
+npm-debug.log*
+.pnpm-debug.log*

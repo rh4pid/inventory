@@ -1,0 +1,37 @@
+# Render Blueprint: New > Blueprint, pick this repo, and Render creates both services.
+# Values marked sync: false are asked for in the dashboard (never commit them).
+# Region: frankfurt is closest to the Supabase database (eu-west-1).
+services:
+  - type: web
+    name: inventory-api
+    runtime: docker
+    rootDir: inventory
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # The frontend's public URL, e.g. https://inventory-web.onrender.com (used in the super admin credentials note).
+      - key: APP_FRONTEND_URL
+        sync: false
+
+  - type: web
+    name: inventory-web
+    runtime: docker
+    rootDir: inventory-front
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free
+    envVars:
+      # The backend's public URL, e.g. https://inventory-api.onrender.com. Used at build time, redeploy after changing it.
+      - key: BACKEND_URL
+        sync: false
+      - key: NEXT_PUBLIC_API_URL
+        value: /api

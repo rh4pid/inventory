@@ -23,8 +23,28 @@ public class InvoiceDetail extends Model {
     @Column(nullable = false)
     private Double quantity;
 
+    /** Unit the line was entered in (e.g. "Carton"); null = product base unit. */
+    @Column(name = "unit_name")
+    private String unitName;
+
+    /** Quantity converted to the product base unit: what actually moved in stock. */
+    @Column(name = "base_quantity")
+    private Double baseQuantity;
+
+    /** Batches the line was taken from / received into, e.g. "LOT-A12 x3, LOT-B07 x2" (for recalls). */
+    @Column(name = "batch_info", length = 500)
+    private String batchInfo;
+
+    /** How much of {@link #quantity} (same unit) has been returned so far. */
+    @Column(name = "returned_quantity")
+    private Double returnedQuantity = 0.0;
+
     @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
+
+    // Only owners, admins and managers see costs (see CostVisibility).
+
+    @tools.jackson.databind.annotation.JsonSerialize(using = com.ultimate.inventory.utils.CostVisibility.Serializer.class)
 
     @Column(name = "cost_price", precision = 19, scale = 2)
     private BigDecimal costPrice;

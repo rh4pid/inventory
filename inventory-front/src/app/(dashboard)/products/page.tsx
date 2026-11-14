@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCan } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { products as productsApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,16 +14,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import type { Product } from "@/Types";
 
 export default function ProductsPage() {
+  const can = useCan();
+  const canEdit = can("MANAGE_CATALOG");
+  const seeCosts = can("VIEW_COSTS");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Deep link from the dashboard / search: /products?q=…
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setSearch(q);
+  }, []);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -37,8 +46,8 @@ export default function ProductsPage() {
       });
       setItems(res.content);
       setTotal(res.totalElements);
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to load products");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to load products"));
     } finally {
       setLoading(false);
     }
@@ -54,8 +63,8 @@ export default function ProductsPage() {
       toast.success("Product deleted");
       setDeleteId(null);
       load();
-    } catch (err: any) {
-      toast.error(err.message ?? "Delete failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Delete failed"));
     } finally {
       setDeleting(false);
     }
@@ -68,11 +77,11 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         description={`${total} items in catalog`}
-        action={
+        action={canEdit && (
           <Link href="/products/new">
             <Button><Plus className="h-4 w-4" /> Add Product</Button>
           </Link>
-        }
+        )}
       />
 
       <div className="mb-4 flex gap-3">
@@ -91,17 +100,17 @@ export default function ProductsPage() {
         <EmptyState
           title="No products yet"
           description="Add your first product to get started."
-          action={<Link href="/products/new"><Button>Add Product</Button></Link>}
+          action={canEdit && <Link href="/products/new"><Button>Add Product</Button></Link>}
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Cost</TableHead>
+                {seeCosts && <TableHead>Cost</TableHead>}
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead className="w-20"></TableHead>
@@ -124,7 +133,7 @@ export default function ProductsPage() {
                       <Badge variant="secondary">{p.category.categoryName}</Badge>
                     ) : "—"}
                   </TableCell>
-                  <TableCell>{formatCurrency(p.costPrice)}</TableCell>
+                  {seeCosts && <TableCell>{formatCurrency(p.costPrice)}</TableCell>}
                   <TableCell className="font-medium">{formatCurrency(p.sellingPrice)}</TableCell>
                   <TableCell>
                     <span className={p.totalCount <= (p.reorderLevel ?? 0) && p.totalCount > 0
@@ -135,7 +144,7 @@ export default function ProductsPage() {
                     {p.unit && <span className="text-xs text-gray-400 ml-1">{p.unit.symbol}</span>}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    {canEdit && <div className="flex gap-1">
                       <Link href={`/products/${p.id}/edit`}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Pencil className="h-3.5 w-3.5" />
@@ -147,7 +156,7 @@ export default function ProductsPage() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    </div>
+                    </div>}
                   </TableCell>
                 </TableRow>
               ))}

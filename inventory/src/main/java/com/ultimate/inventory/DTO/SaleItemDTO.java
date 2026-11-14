@@ -18,7 +18,13 @@ public class SaleItemDTO {
     @Positive(message = "Quantity must be positive")
     private Double quantity;
 
+    /** Unit the quantity is entered in (a pack size of the product). Null = base unit. */
+    private Long unitId;
+
     private BigDecimal unitPrice;
 
     private BigDecimal discountAmount;
+
+    /** Sell from this batch only. Null = pick automatically (earliest expiry first, expired skipped). */
+    private Long batchId;
 }

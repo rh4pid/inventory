@@ -21,4 +21,6 @@ public class AccountDTO {
     private AccountType accountType;
 
     private AccountPurpose accountPurpose;
+    /** Leave out to keep as is; false hides an account from new entries (system accounts stay on). */
+    private Boolean active;
 }

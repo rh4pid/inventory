@@ -11,8 +11,8 @@ function SelectTrigger({ className, children, ...props }: React.ComponentPropsWi
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
-        "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+        "flex h-10 w-full items-center justify-between rounded-xl border border-line bg-surface px-3.5 py-2 text-sm text-ink",
+        "focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand",
         "disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-gray-400",
         className
       )}
@@ -31,7 +31,7 @@ function SelectContent({ className, children, position = "popper", ...props }: R
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         className={cn(
-          "relative z-50 min-w-[8rem] overflow-hidden rounded-md border border-gray-200 bg-white shadow-md",
+          "relative z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-line bg-surface p-1 shadow-float",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -62,8 +62,8 @@ function SelectItem({ className, children, ...props }: React.ComponentPropsWitho
   return (
     <SelectPrimitive.Item
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
-        "focus:bg-blue-50 focus:text-blue-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-default select-none items-center rounded-lg py-1.5 pl-8 pr-2 text-sm outline-none",
+        "focus:bg-surface-2 focus:text-ink data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
       {...props}

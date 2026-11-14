@@ -6,7 +6,7 @@ import { Plus, UserX, Pencil } from "lucide-react";
 import { employees as employeesApi } from "@/lib/api";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Employee } from "@/Types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +36,7 @@ export default function PayrollPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [bizId]);
+  useEffect(() => { load(); }, [bizId]); // eslint-disable-line react-hooks/exhaustive-deps -- load is recreated each render; reload only when the business changes
 
   const handleTerminate = async () => {
     if (!terminateId) return;
@@ -46,8 +46,8 @@ export default function PayrollPage() {
       toast.success("Employee terminated");
       setTerminateId(null);
       load();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to terminate");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to terminate"));
     } finally {
       setTerminating(false);
     }
@@ -91,7 +91,7 @@ export default function PayrollPage() {
           { label: "Active Employees", value: String(stats.active) },
           { label: "Monthly Payroll", value: formatCurrency(stats.monthlyPayroll) },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
+          <div key={s.label} className="rounded-3xl border border-line/80 bg-surface shadow-card p-4">
             <p className="text-sm text-gray-500">{s.label}</p>
             <p className="mt-1 text-2xl font-bold text-gray-900">{s.value}</p>
           </div>
@@ -99,7 +99,7 @@ export default function PayrollPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}

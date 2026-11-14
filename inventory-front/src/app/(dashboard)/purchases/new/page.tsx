@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { purchases as purchasesApi, products as productsApi, suppliers as suppliersApi, shops as shopsApi } from "@/lib/api";
+import { purchases as purchasesApi, suppliers as suppliersApi, shops as shopsApi, units as unitsApi } from "@/lib/api";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { ProductPicker } from "@/components/shared/ProductPicker";
+import { fmtQty } from "@/constants/Inventory";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,16 +15,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, errorMessage } from "@/lib/utils";
 import { PAYMENT_METHODS } from "@/constants/Strings";
-import type { Product, Supplier, Shop, PurchaseItemPayload, PaymentMethod } from "@/Types";
+import type { Product, ProductUnit, Supplier, Shop, PurchaseItemPayload, PaymentMethod } from "@/Types";
 
-interface LineItem { product: Product; quantity: number; unitPrice: number; }
+/** unitId "" = the product's base unit; otherwise one of its pack sizes. */
+interface LineItem {
+  product: Product; quantity: number; unitPrice: number; unitId: string; packs: ProductUnit[];
+  /** Lot details, used when the business tracks batches / expiry. */
+  batchNumber: string; expiryDate: string;
+}
 
 export default function NewPurchasePage() {
   const router = useRouter();
   const { activeBusiness } = useBusiness();
-  const [prods, setProds] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [lines, setLines] = useState<LineItem[]>([]);
@@ -30,34 +37,52 @@ export default function NewPurchasePage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [selProduct, setSelProduct] = useState<string>("");
+  const { settings } = useBusinessSettings();
 
   useEffect(() => {
     if (!activeBusiness) return;
     const id = activeBusiness.businessId;
     Promise.all([
-      productsApi.list(id, { size: 100 }),
-      suppliersApi.list(id, { size: 100 }),
-      shopsApi.list(id),
-    ]).then(([p, s, sh]) => {
-      setProds(p.content);
+      suppliersApi.list(id, { size: 200 }),
+      shopsApi.list(id, { mine: true }),
+    ]).then(([s, sh]) => {
       setSuppliers(s.content);
       setShops(sh.content);
       if (sh.content[0]) setShopId(sh.content[0].id);
     }).catch(() => {});
   }, [activeBusiness]);
 
-  const addLine = () => {
-    if (!selProduct) return;
-    const product = prods.find((p) => String(p.id) === selProduct);
-    if (!product) return;
+  // Picked from a server-side search, so any size of catalogue works.
+  const addLine = async (product: Product | null) => {
+    if (!product || !activeBusiness) return;
     if (lines.find((l) => l.product.id === product.id)) return;
-    setLines((prev) => [...prev, { product, quantity: 1, unitPrice: product.costPrice }]);
-    setSelProduct("");
+    let packs: ProductUnit[] = [];
+    if (settings?.multipleUnits) {
+      packs = await unitsApi.forProduct(activeBusiness.businessId, product.id).catch(() => []);
+    }
+    setLines((prev) => [...prev, {
+      product, quantity: 1, unitPrice: product.costPrice ?? 0, unitId: "", packs, batchNumber: "", expiryDate: "",
+    }]);
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const updateLineText = (productId: number, field: "batchNumber" | "expiryDate", value: string) => {
+    setLines((prev) => prev.map((l) => l.product.id === productId ? { ...l, [field]: value } : l));
   };
 
   const updateLine = (productId: number, field: "quantity" | "unitPrice", value: number) => {
     setLines((prev) => prev.map((l) => l.product.id === productId ? { ...l, [field]: value } : l));
+  };
+
+  /** Switching unit re-prices the line at base cost × pack size; the user can still edit it. */
+  const changeUnit = (productId: number, unitId: string) => {
+    setLines((prev) => prev.map((l) => {
+      if (l.product.id !== productId) return l;
+      const pack = l.packs.find((p) => String(p.unit.id) === unitId);
+      const factor = pack?.conversionFactor ?? 1;
+      return { ...l, unitId: pack ? unitId : "", unitPrice: Math.round((l.product.costPrice ?? 0) * factor * 100) / 100 };
+    }));
   };
 
   const removeLine = (productId: number) => {
@@ -80,7 +105,10 @@ export default function NewPurchasePage() {
       const items: PurchaseItemPayload[] = lines.map((l) => ({
         productId: l.product.id,
         quantity: l.quantity,
+        unitId: l.unitId ? Number(l.unitId) : undefined,
         unitPrice: l.unitPrice,
+        batchNumber: settings?.trackBatches && l.batchNumber.trim() ? l.batchNumber.trim() : undefined,
+        expiryDate: settings?.trackExpiry && l.expiryDate ? l.expiryDate : undefined,
       }));
       await purchasesApi.create(activeBusiness.businessId, {
         shopId,
@@ -91,8 +119,8 @@ export default function NewPurchasePage() {
       });
       toast.success("Purchase recorded");
       router.push("/purchases");
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create purchase");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to create purchase"));
     } finally {
       setSubmitting(false);
     }
@@ -147,33 +175,47 @@ export default function NewPurchasePage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Line Items</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Select value={selProduct} onValueChange={setSelProduct}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder="Select product to add" /></SelectTrigger>
-                <SelectContent>
-                  {prods.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.productName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={addLine} disabled={!selProduct}>
-                <Plus className="h-4 w-4" /> Add
-              </Button>
-            </div>
+            {activeBusiness && (
+              <ProductPicker businessId={activeBusiness.businessId} value={null} onChange={addLine} clearOnPick
+                placeholder="Add a product: type its name, SKU or scan a barcode…" />
+            )}
 
             {lines.length > 0 && (
               <div className="space-y-2">
                 <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
-                  <div className="col-span-5">Product</div>
-                  <div className="col-span-3">Quantity</div>
-                  <div className="col-span-3">Unit Cost</div>
+                  <div className="col-span-4">Product</div>
+                  <div className="col-span-3">Unit</div>
+                  <div className="col-span-2">Quantity</div>
+                  <div className="col-span-2">Cost / unit</div>
                   <div className="col-span-1"></div>
                 </div>
-                {lines.map((line) => (
+                {lines.map((line) => {
+                  const baseName = line.product.unit?.name ?? "Base unit";
+                  const pack = line.packs.find((p) => String(p.unit.id) === line.unitId);
+                  return (
                   <div key={line.product.id} className="grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <p className="text-sm font-medium">{line.product.productName}</p>
-                      <p className="text-xs text-gray-400">{formatCurrency(line.quantity * line.unitPrice)}</p>
+                      <p className="text-xs text-gray-400">
+                        {formatCurrency(line.quantity * line.unitPrice)}
+                        {pack && ` · ${fmtQty(line.quantity * pack.conversionFactor)} ${baseName}`}
+                      </p>
                     </div>
                     <div className="col-span-3">
+                      <Select value={line.unitId || "base"} onValueChange={(v) => changeUnit(line.product.id, v)}
+                        disabled={line.packs.length === 0}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="base">{baseName}</SelectItem>
+                          {line.packs.map((p) => (
+                            <SelectItem key={p.unit.id} value={String(p.unit.id)}>
+                              {p.unit.name} ({fmtQty(p.conversionFactor)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2">
                       <Input
                         type="number" min="0.01" step="any"
                         value={line.quantity}
@@ -181,21 +223,49 @@ export default function NewPurchasePage() {
                         className="h-8 text-sm"
                       />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <Input
                         type="number" min="0" step="0.01"
+                        aria-label={`Cost per ${pack ? pack.unit.name : baseName}`}
                         value={line.unitPrice}
                         onChange={(e) => updateLine(line.product.id, "unitPrice", Number(e.target.value))}
                         className="h-8 text-sm"
                       />
                     </div>
                     <div className="col-span-1 flex justify-center">
-                      <button onClick={() => removeLine(line.product.id)} className="text-red-400 hover:text-red-600">
+                      <button onClick={() => removeLine(line.product.id)} className="text-red-400 hover:text-red-600"
+                        aria-label={`Remove ${line.product.productName}`}>
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
+                    {settings?.trackBatches && (
+                      <>
+                        <div className="col-span-4" />
+                        <div className="col-span-3">
+                          <Input
+                            placeholder="Batch / lot no. (auto)"
+                            aria-label={`Batch number for ${line.product.productName}`}
+                            value={line.batchNumber}
+                            onChange={(e) => updateLineText(line.product.id, "batchNumber", e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        {settings.trackExpiry && (
+                          <div className="col-span-4">
+                            <Input
+                              type="date" min={today}
+                              aria-label={`Expiry date for ${line.product.productName}`}
+                              value={line.expiryDate}
+                              onChange={(e) => updateLineText(line.product.id, "expiryDate", e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
 
                 <Separator />
                 <div className="flex justify-between items-center font-semibold">

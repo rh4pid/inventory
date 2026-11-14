@@ -2,18 +2,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, X } from "lucide-react";
-import { products as productsApi, shops as shopsApi, sales as salesApi } from "@/lib/api";
+import { shops as shopsApi, sales as salesApi } from "@/lib/api";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Product, Shop, SalePayload, PaymentMethod } from "@/Types";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, errorMessage } from "@/lib/utils";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { CartLineOptions, addProduct, type CartLine } from "@/components/sales/CartLineOptions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-interface CartItem {
-  product: Product;
-  qty: number;
-  unitPrice: number;
-}
 
 const PAYMENT_OPTS: { label: string; value: PaymentMethod; icon: React.ReactNode }[] = [
   { label: "Cash",          value: "CASH",          icon: <Banknote className="h-4 w-4" /> },
@@ -25,30 +22,30 @@ export default function POSPage() {
   const { activeBusiness } = useBusiness();
   const bizId = activeBusiness?.businessId ?? 0;
 
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [shopId, setShopId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const { settings } = useBusinessSettings();
+  const multipleUnits = Boolean(settings?.multipleUnits);
+  const trackBatches = Boolean(settings?.trackBatches);
+  const trackExpiry = Boolean(settings?.trackExpiry);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashTendered, setCashTendered] = useState("");
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Products are searched on the server (name, SKU or scanned barcode), so any catalogue size works.
+  const { results: allProducts, total: productTotal, loading } = useProductSearch(bizId || undefined, search, 60);
 
   useEffect(() => {
     if (!bizId) return;
-    setLoading(true);
-    Promise.all([
-      productsApi.list(bizId, { size: 200 }),
-      shopsApi.list(bizId),
-    ]).then(([p, s]) => {
-      setAllProducts(p.content);
-      const shopList = s.content ?? (s as any);
-      setShops(Array.isArray(shopList) ? shopList : []);
-      if (Array.isArray(shopList) && shopList.length > 0) setShopId(shopList[0].id);
-    }).catch(() => toast.error("Failed to load products"))
-      .finally(() => setLoading(false));
+    shopsApi.list(bizId, { mine: true })
+      .then((s) => {
+        setShops(s.content);
+        if (s.content.length > 0) setShopId(s.content[0].id);
+      })
+      .catch(() => toast.error("Failed to load your locations"));
   }, [bizId]);
 
   const categories = useMemo(() => {
@@ -56,32 +53,22 @@ export default function POSPage() {
     return ["All", ...names];
   }, [allProducts]);
 
-  const filtered = useMemo(() => allProducts.filter((p) => {
-    const matchCat = categoryFilter === "All" || p.category?.categoryName === categoryFilter;
-    const matchQ = !search || p.productName.toLowerCase().includes(search.toLowerCase()) || (p.sku ?? "").toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchQ;
-  }), [allProducts, categoryFilter, search]);
+  // The server already matched the search (name, SKU, barcode); only the category tab filters here.
+  const filtered = useMemo(() => allProducts.filter((p) =>
+    categoryFilter === "All" || (p.category?.categoryName ?? "Uncategorised") === categoryFilter
+  ), [allProducts, categoryFilter]);
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing) return prev.map((i) => i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { product, qty: 1, unitPrice: product.sellingPrice }];
-    });
+  const addToCart = (product: Product) => setCart((prev) => addProduct(prev, product));
+
+  const updateQty = (key: string, delta: number) => {
+    setCart((prev) => prev.map((i) => i.key === key ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i));
   };
 
-  const updateQty = (productId: number, delta: number) => {
-    setCart((prev) => prev.map((i) => i.product.id === productId
-      ? { ...i, qty: Math.max(1, i.qty + delta) }
-      : i
-    ));
-  };
+  const replaceLine = (line: CartLine) => setCart((prev) => prev.map((i) => i.key === line.key ? line : i));
 
-  const removeItem = (productId: number) => {
-    setCart((prev) => prev.filter((i) => i.product.id !== productId));
-  };
+  const removeItem = (key: string) => setCart((prev) => prev.filter((i) => i.key !== key));
 
-  const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+  const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const tendered = parseFloat(cashTendered) || 0;
   const change = paymentMethod === "CASH" ? Math.max(0, tendered - subtotal) : 0;
   const canCheckout = cart.length > 0 && shopId != null && (paymentMethod !== "CASH" || tendered >= subtotal);
@@ -92,32 +79,46 @@ export default function POSPage() {
     const payload: SalePayload = {
       shopId,
       paymentMethod,
-      items: cart.map((i) => ({ productId: i.product.id, quantity: i.qty, unitPrice: i.unitPrice })),
+      items: cart.map((i) => ({
+        productId: i.product.id, quantity: i.quantity, unitPrice: i.unitPrice,
+        unitId: i.unitId, batchId: i.batchId,
+      })),
     };
     try {
       const invoice = await salesApi.create(bizId, payload);
       toast.success(`Sale complete — ${invoice.invoiceNumber}`);
       setCart([]);
       setCashTendered("");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Sale failed");
+    } catch (err) {
+      toast.error(errorMessage(err, "Sale failed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-full min-h-[34rem] flex-col overflow-hidden rounded-4xl border border-line/80 bg-surface shadow-card lg:flex-row">
       {/* ── Product Grid ──────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 overflow-hidden border-r border-gray-200">
+      <div className="flex min-h-[20rem] flex-1 flex-col overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
           <Input
-            placeholder="Search product or SKU…"
+            placeholder="Search or scan a barcode…"
+            aria-label="Search products or scan a barcode"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              // A scanner types the code and presses Enter: one match goes straight into the cart.
+              if (e.key === "Enter" && search.trim() && filtered.length === 1 && !loading) {
+                addToCart(filtered[0]);
+                setSearch("");
+              }
+            }}
             className="max-w-xs"
           />
+          {!search && productTotal > allProducts.length && (
+            <span className="hidden text-xs text-ink-3 md:inline">Showing {allProducts.length} of {productTotal}. Search to find the rest.</span>
+          )}
           {shops.length > 1 && (
             <select
               className="text-sm border border-gray-200 rounded-md px-3 py-2 bg-white"
@@ -159,7 +160,7 @@ export default function POSPage() {
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="flex flex-col items-start rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all active:scale-95"
+                  className="flex flex-col items-start rounded-3xl border border-line/80 bg-surface shadow-card p-3 text-left shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all active:scale-95"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
                     {product.productName.slice(0, 2).toUpperCase()}
@@ -180,7 +181,7 @@ export default function POSPage() {
       </div>
 
       {/* ── Cart ──────────────────────────────────────────────── */}
-      <div className="flex flex-col w-96 bg-white shrink-0">
+      <div className="flex w-full shrink-0 flex-col bg-surface lg:w-96">
         {/* Cart header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
           <ShoppingCart className="h-5 w-5 text-blue-600" />
@@ -206,30 +207,34 @@ export default function POSPage() {
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.product.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={item.key} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.product.productName}</p>
-                  <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} each</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} per {item.unitName ?? item.product.unit?.name ?? "unit"}</p>
+                  <CartLineOptions
+                    businessId={bizId} shopId={shopId} line={item} onChange={replaceLine} compact
+                    multipleUnits={multipleUnits} trackBatches={trackBatches} trackExpiry={trackExpiry}
+                  />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => updateQty(item.product.id, -1)}
+                    onClick={() => updateQty(item.key, -1)}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
                   >
                     <Minus className="h-3 w-3" />
                   </button>
-                  <span className="w-6 text-center text-sm font-medium">{item.qty}</span>
+                  <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
                   <button
-                    onClick={() => updateQty(item.product.id, 1)}
+                    onClick={() => updateQty(item.key, 1)}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
                   >
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
                 <div className="w-16 text-right shrink-0">
-                  <p className="text-sm font-semibold">{formatCurrency(item.unitPrice * item.qty)}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(item.unitPrice * item.quantity)}</p>
                 </div>
-                <button onClick={() => removeItem(item.product.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                <button onClick={() => removeItem(item.key)} className="text-gray-300 hover:text-red-500 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
