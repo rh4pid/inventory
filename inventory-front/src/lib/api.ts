@@ -11,6 +11,7 @@ import type {
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
   InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
   BusinessProfile, Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
+  InvitePayload, SentInvitation, MyInvitation,
   AccountingSummary, AccountRef, JournalView, JournalType, Ledger, TrialBalance, ProfitAndLoss, BalanceSheet, CatchUpResult,
   OwnerMoneyPayload, TransferPayload, ManualJournalPayload, Expense, ExpenseOptions, ExpensePayload, ExpenseStatus,
 } from "@/Types";
@@ -73,6 +74,10 @@ export const users = {
   lookup: (username: string) => req<PublicProfile>(`/users/lookup${qs({ q: username })}`),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<User>("/users/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+  /** Invitations waiting for your answer. */
+  invitations: () => req<MyInvitation[]>("/users/me/invitations"),
+  acceptInvitation: (id: number) => req<BusinessMembership>(`/users/me/invitations/${id}/accept`, { method: "POST" }),
+  declineInvitation: (id: number) => req<void>(`/users/me/invitations/${id}/decline`, { method: "POST" }),
 };
 
 // ── Your own companies ───────────────────────────────────────────────────────
@@ -376,6 +381,13 @@ export const team = {
     req<TeamAdded>(`/businesses/${businessId}/team/${memberId}/reset-password`, { method: "POST" }),
   remove: (businessId: number, memberId: number) =>
     req<void>(`/businesses/${businessId}/team/${memberId}`, { method: "DELETE" }),
+  /** Invite someone who already has an account; they join when they accept. */
+  invite: (businessId: number, data: InvitePayload) =>
+    req<SentInvitation>(`/businesses/${businessId}/team/invitations`, { method: "POST", body: JSON.stringify(data) }),
+  resendInvitation: (businessId: number, invitationId: number) =>
+    req<SentInvitation>(`/businesses/${businessId}/team/invitations/${invitationId}/resend`, { method: "POST" }),
+  cancelInvitation: (businessId: number, invitationId: number) =>
+    req<void>(`/businesses/${businessId}/team/invitations/${invitationId}`, { method: "DELETE" }),
 };
 
 // ── Accounting: the books and reports (admins) ───────────────────────────────

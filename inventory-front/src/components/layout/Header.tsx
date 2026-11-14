@@ -11,6 +11,7 @@ import { useWorkspace, PERIODS } from "@/context/WorkspaceContext";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { inventory as invApi, stockRequests as requestsApi } from "@/lib/api";
 import { useProductSearch } from "@/hooks/useProductSearch";
+import { useMyInvitations } from "@/hooks/useMyInvitations";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -191,11 +192,14 @@ function Notifications() {
 
 function BusinessSwitcher() {
   const { businesses, activeBusiness, switchBusiness } = useBusiness();
+  const { invitations } = useMyInvitations();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={iconBtn} aria-label="Switch business">
+        <button className={cn(iconBtn, "relative")}
+          aria-label={invitations.length ? `Switch business (${invitations.length} invitation${invitations.length > 1 ? "s" : ""} waiting)` : "Switch business"}>
           <LayoutPanelLeft className="h-5 w-5" />
+          {invitations.length > 0 && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-frame" aria-hidden="true" />}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 rounded-2xl p-1.5">
@@ -211,7 +215,9 @@ function BusinessSwitcher() {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="rounded-xl">
-          <Link href="/settings/companies">My companies · create one</Link>
+          <Link href="/settings/companies">
+            {invitations.length > 0 ? `${invitations.length} invitation${invitations.length > 1 ? "s" : ""} waiting · My companies` : "My companies · create one"}
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

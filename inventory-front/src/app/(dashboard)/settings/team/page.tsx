@@ -1,11 +1,11 @@
 "use client";
 import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, MoreHorizontal, Pencil, Plus, UserMinus } from "lucide-react";
+import { Check, KeyRound, Loader2, MoreHorizontal, Pencil, Plus, RotateCw, UserMinus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { shops as shopsApi, team as teamApi } from "@/lib/api";
+import { shops as shopsApi, team as teamApi, users as usersApi } from "@/lib/api";
 import { cn, errorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Monogram } from "@/components/dashboard/Panel";
 import { CredentialsCard } from "@/components/account/CredentialsCard";
-import type { Shop, TeamAdded, TeamList, TeamMember, UserRole } from "@/Types";
+import type { PublicProfile, SentInvitation, Shop, TeamAdded, TeamList, TeamMember, UserRole } from "@/Types";
 
 const ROLE: Record<string, { label: string; hint: string; everywhere: boolean }> = {
   OWNER:   { label: "Owner",   hint: "Everything, including settings, accounts, payroll and admins", everywhere: true },
@@ -88,6 +88,23 @@ export default function TeamPage() {
     } catch (err) { toast.error(errorMessage(err)); }
   };
 
+  const resendInvite = async (inv: SentInvitation) => {
+    try {
+      await teamApi.resendInvitation(bizId, inv.id);
+      toast.success(`Invitation to @${inv.username} sent again`);
+      load();
+    } catch (err) { toast.error(errorMessage(err)); }
+  };
+
+  const cancelInvite = async (inv: SentInvitation) => {
+    if (!(await confirmAction({ title: `Cancel the invitation to ${inv.name}?`, description: "They won't be able to accept it any more.", confirmLabel: "Cancel invitation", tone: "danger" }))) return;
+    try {
+      await teamApi.cancelInvitation(bizId, inv.id);
+      toast.success("Invitation cancelled");
+      load();
+    } catch (err) { toast.error(errorMessage(err)); }
+  };
+
   const remove = async (m: TeamMember) => {
     if (!(await confirmAction({ title: `Remove ${m.name} from ${activeBusiness?.businessName}?`, description: "They lose access straight away. Their past sales and stock records are kept.", confirmLabel: "Remove", tone: "danger" }))) return;
     try {
@@ -101,7 +118,7 @@ export default function TeamPage() {
     <div className="max-w-5xl">
       <PageHeader
         title="Team"
-        description="Create sign-ins for your people, choose what they do and where they work."
+        description="Invite people by their username, or create sign-ins for new people. Choose what they do and where they work."
         action={data.rolesYouCanAssign.length > 0 && <Button onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Add person</Button>}
       />
 
@@ -116,6 +133,7 @@ export default function TeamPage() {
                     {m.name} {m.you && <span className="ml-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-ink-3">You</span>}
                   </div>
                   <div className="truncate text-xs text-ink-3">
+                    {m.username && <span className="font-medium text-ink-2">@{m.username} · </span>}
                     {m.email}{m.phone ? ` · ${m.phone}` : ""}
                     {m.pendingFirstSignIn && <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent-deep">Hasn&apos;t signed in yet</span>}
                   </div>
@@ -157,10 +175,53 @@ export default function TeamPage() {
         </ul>
       </div>
 
+      {data.invitations.length > 0 && (
+        <section className="mt-6" aria-labelledby="invites-heading">
+          <h2 id="invites-heading" className="mb-2 px-1 text-sm font-semibold text-ink-2">Waiting to accept ({data.invitations.length})</h2>
+          <div className="overflow-hidden rounded-4xl border border-line/80 bg-surface shadow-card">
+            <ul className="divide-y divide-line/70">
+              {data.invitations.map((inv) => (
+                <li key={inv.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <Monogram name={inv.name} />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-ink">{inv.name}</div>
+                      <div className="truncate text-xs text-ink-3">
+                        @{inv.username} · invited by {inv.invitedBy} · expires {new Date(inv.expiresAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:w-[22rem] sm:justify-end">
+                    <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold text-ink-2">{ROLE[inv.role]?.label ?? inv.role}</span>
+                    {ROLE[inv.role]?.everywhere
+                      ? <span className="text-xs text-ink-3">All locations</span>
+                      : inv.locations.map((l) => <span key={l.id} className="rounded-lg bg-surface-2 px-2 py-1 text-xs text-ink-2">{l.name}</span>)}
+                  </div>
+                  <div className="flex gap-1 sm:w-auto">
+                    {inv.canManage && (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => resendInvite(inv)} aria-label={`Send the invitation to ${inv.name} again`}>
+                          <RotateCw className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => cancelInvite(inv)} aria-label={`Cancel the invitation to ${inv.name}`}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
       <AddPersonDialog
         open={adding} onClose={() => setAdding(false)} businessId={bizId}
         roles={data.rolesYouCanAssign} locations={locations}
         onAdded={(r) => { setAdding(false); setHandover(r); load(); refreshLocations(); }}
+        onInvited={(inv) => { setAdding(false); toast.success(`Invitation sent to @${inv.username}. They join when they accept.`); load(); }}
       />
       {editing && (
         <EditPersonDialog member={editing} businessId={bizId} roles={data.rolesYouCanAssign} locations={locations}
@@ -195,50 +256,132 @@ function RoleSelect({ roles, value, onChange }: { roles: UserRole[]; value: User
   );
 }
 
-function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded }: {
+/** Looks up a username as you type and shows who it belongs to. */
+function UsernameLookup({ value, onChange, onFound }: {
+  value: string; onChange: (v: string) => void; onFound: (p: PublicProfile | null) => void;
+}) {
+  const [state, setState] = useState<{ status: "idle" | "looking" | "found" | "none"; person?: PublicProfile; message?: string }>({ status: "idle" });
+
+  useEffect(() => {
+    const u = value.trim().replace(/^@/, "").toLowerCase();
+    let stale = false;
+    const t = setTimeout(async () => {
+      if (u.length < 3) { if (!stale) { setState({ status: "idle" }); onFound(null); } return; }
+      if (!stale) setState({ status: "looking" });
+      try {
+        const person = await usersApi.lookup(u);
+        if (!stale) { setState({ status: "found", person }); onFound(person); }
+      } catch (err) {
+        if (!stale) { setState({ status: "none", message: errorMessage(err, "No one has that username") }); onFound(null); }
+      }
+    }, 350);
+    return () => { stale = true; clearTimeout(t); };
+    // onFound comes from the parent; re-running on its identity would look up needlessly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor="ap-username">Their username *</Label>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-3">@</span>
+        <Input id="ap-username" className="pl-7" autoCapitalize="none" spellCheck={false} placeholder="ama_mensah"
+          value={value} onChange={(e) => onChange(e.target.value.replace(/\s/g, ""))} aria-describedby="ap-username-result" />
+      </div>
+      <div id="ap-username-result" aria-live="polite" className="min-h-[3.25rem]">
+        {state.status === "looking" && <p className="flex items-center gap-2 pt-1 text-xs text-ink-3"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Looking up…</p>}
+        {state.status === "none" && <p className="pt-1 text-xs text-red-600">{state.message}</p>}
+        {state.status === "found" && state.person && (
+          <div className="flex items-center gap-3 rounded-2xl bg-surface-2 px-3 py-2">
+            <Monogram name={state.person.name} className="h-9 w-9" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-ink">{state.person.name}</div>
+              <div className="truncate text-xs text-ink-3">@{state.person.username}</div>
+            </div>
+            <Check className="h-4 w-4 text-brand-deep" aria-label="Found" />
+          </div>
+        )}
+        {state.status === "idle" && <p className="pt-1 text-xs text-ink-3">Ask them for the username shown on their profile.</p>}
+      </div>
+    </div>
+  );
+}
+
+function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded, onInvited }: {
   open: boolean; onClose: () => void; businessId: number; roles: UserRole[]; locations: Shop[];
-  onAdded: (r: TeamAdded) => void;
+  onAdded: (r: TeamAdded) => void; onInvited: (inv: SentInvitation) => void;
 }) {
   const blank = { firstName: "", lastName: "", email: "", phone: "" };
+  const [mode, setMode] = useState<"invite" | "new">("invite");
   const [p, setP] = useState(blank);
+  const [username, setUsername] = useState("");
+  const [found, setFound] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<UserRole>("CASHIER");
   const [shopIds, setShopIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setMode("invite");
     setP(blank);
+    setUsername("");
+    setFound(null);
     setRole(roles.includes("CASHIER") ? "CASHIER" : roles[0]);
     setShopIds(locations.length === 1 ? [locations[0].id] : []);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const everywhere = ROLE[role]?.everywhere;
-  const valid = p.firstName.trim() && p.lastName.trim() && p.email.trim() && (everywhere || shopIds.length > 0);
+  const placed = everywhere || shopIds.length > 0;
+  const valid = mode === "invite"
+    ? !!found && placed
+    : p.firstName.trim() && p.lastName.trim() && p.email.trim() && placed;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid) return;
     setBusy(true);
     try {
-      onAdded(await teamApi.add(businessId, {
-        firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim(),
-        phone: p.phone.trim() || undefined, role, shopIds: everywhere ? [] : shopIds,
-      }));
-    } catch (err) { toast.error(errorMessage(err, "Could not add this person")); }
+      if (mode === "invite" && found) {
+        onInvited(await teamApi.invite(businessId, { username: found.username, role, shopIds: everywhere ? [] : shopIds }));
+      } else {
+        onAdded(await teamApi.add(businessId, {
+          firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim(),
+          phone: p.phone.trim() || undefined, role, shopIds: everywhere ? [] : shopIds,
+        }));
+      }
+    } catch (err) { toast.error(errorMessage(err, mode === "invite" ? "Could not send the invitation" : "Could not add this person")); }
     finally { setBusy(false); }
   };
+
+  const tab = (m: typeof mode, label: string) => (
+    <button type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+      className={cn("flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+        mode === m ? "bg-surface text-ink shadow-card" : "text-ink-3 hover:text-ink")}>
+      {label}
+    </button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Add person</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5"><Label htmlFor="ap-first">First name *</Label><Input id="ap-first" value={p.firstName} onChange={(e) => setP((x) => ({ ...x, firstName: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label htmlFor="ap-last">Last name *</Label><Input id="ap-last" value={p.lastName} onChange={(e) => setP((x) => ({ ...x, lastName: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label htmlFor="ap-email">Email (sign-in) *</Label><Input id="ap-email" type="email" value={p.email} onChange={(e) => setP((x) => ({ ...x, email: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label htmlFor="ap-phone">Phone</Label><Input id="ap-phone" value={p.phone} onChange={(e) => setP((x) => ({ ...x, phone: e.target.value }))} placeholder="Optional" /></div>
+          <div role="tablist" aria-label="How to add them" className="flex gap-1 rounded-2xl bg-surface-2 p-1">
+            {tab("invite", "Has an account")}
+            {tab("new", "New person")}
           </div>
+
+          {mode === "invite" ? (
+            <UsernameLookup value={username} onChange={setUsername} onFound={setFound} />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="ap-first">First name *</Label><Input id="ap-first" value={p.firstName} onChange={(e) => setP((x) => ({ ...x, firstName: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ap-last">Last name *</Label><Input id="ap-last" value={p.lastName} onChange={(e) => setP((x) => ({ ...x, lastName: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ap-email">Email (sign-in) *</Label><Input id="ap-email" type="email" value={p.email} onChange={(e) => setP((x) => ({ ...x, email: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ap-phone">Phone</Label><Input id="ap-phone" value={p.phone} onChange={(e) => setP((x) => ({ ...x, phone: e.target.value }))} placeholder="Optional" /></div>
+            </div>
+          )}
+
           <RoleSelect roles={roles} value={role} onChange={setRole} />
           <div className="space-y-1.5">
             <Label>Works at {everywhere ? "" : "*"}</Label>
@@ -246,10 +389,16 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded 
               ? <p className="text-sm text-ink-3">{ROLE[role].label}s can use every location.</p>
               : <LocationPicker locations={locations} value={shopIds} onChange={setShopIds} />}
           </div>
-          <p className="text-xs text-ink-3">They get a temporary password to sign in with and choose their own at first sign-in.</p>
+          <p className="text-xs text-ink-3">
+            {mode === "invite"
+              ? "They get an invitation and join when they accept it."
+              : "We create their account and username and add them straight away. They get a temporary password and choose their own at first sign-in."}
+          </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={!valid || busy}>{busy ? "Adding…" : "Add person"}</Button>
+            <Button type="submit" disabled={!valid || busy}>
+              {busy ? (mode === "invite" ? "Sending…" : "Adding…") : (mode === "invite" ? "Send invitation" : "Add person")}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -47,4 +47,25 @@ public class TeamController {
         teamService.remove(businessId, memberId, email);
         return ResponseEntity.noContent().build();
     }
+
+    // ── Invitations (people who already have an account) ─────────────────────
+
+    @PostMapping("/invitations")
+    public ResponseEntity<?> invite(@PathVariable Long businessId, @RequestBody TeamService.Invite body,
+                                    @AuthenticationPrincipal String email) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(teamService.invite(businessId, body, email));
+    }
+
+    @PostMapping("/invitations/{invitationId}/resend")
+    public ResponseEntity<?> resend(@PathVariable Long businessId, @PathVariable Long invitationId,
+                                    @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(teamService.resendInvitation(businessId, invitationId, email));
+    }
+
+    @DeleteMapping("/invitations/{invitationId}")
+    public ResponseEntity<?> cancel(@PathVariable Long businessId, @PathVariable Long invitationId,
+                                    @AuthenticationPrincipal String email) {
+        teamService.cancelInvitation(businessId, invitationId, email);
+        return ResponseEntity.noContent().build();
+    }
 }

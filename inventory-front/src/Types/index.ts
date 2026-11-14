@@ -695,11 +695,26 @@ export interface HandoverCredentials { name: string; email: string; temporaryPas
 export interface CompanyResult { company: Company; credentials: HandoverCredentials }
 
 export interface TeamMember {
-  id: number; userId: number; name: string; email: string; phone?: string; role: UserRole;
+  id: number; userId: number; username?: string; name: string; email: string; phone?: string; role: UserRole;
   locations: { id: number; name: string }[]; pendingFirstSignIn: boolean; you: boolean; canManage: boolean;
 }
 
-export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[] }
+export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[]; invitations: SentInvitation[] }
+
+/** Invite someone who already has an account. */
+export interface InvitePayload { username: string; role: UserRole; shopIds: number[] }
+
+/** An open invitation, as the company sees it. */
+export interface SentInvitation {
+  id: number; userId: number; username: string; name: string; role: UserRole;
+  locations: { id: number; name: string }[]; invitedBy: string; sentAt: string; expiresAt: string; canManage: boolean;
+}
+
+/** An open invitation, as the invited person sees it. */
+export interface MyInvitation {
+  id: number; businessId: number; businessName: string; businessLogo?: string; role: UserRole;
+  locations: string[]; invitedBy: string; sentAt: string; expiresAt: string;
+}
 
 export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[] }
 

@@ -1,9 +1,13 @@
 package com.ultimate.inventory.Service;
 
+import com.ultimate.inventory.Constants.InvitationStatus;
 import com.ultimate.inventory.Constants.UserRoles;
+import com.ultimate.inventory.DTO.BusinessMembershipDTO;
 import com.ultimate.inventory.Exception.AppException;
 import com.ultimate.inventory.Model.*;
 import com.ultimate.inventory.Repository.BusinessUserRepo;
+import com.ultimate.inventory.Repository.InvitationRepository;
+import com.ultimate.inventory.Repository.UserRepository;
 import com.ultimate.inventory.Repository.ShopUsersRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +39,18 @@ public class TeamService {
     private final BusinessUserRepo businessUserRepo;
     private final ShopUsersRepository shopUsersRepo;
     private final UserAccounts accounts;
+    private final UserRepository userRepo;
+    private final InvitationRepository invitationRepo;
+
+    /** How long an invitation stays open. */
+    static final long INVITE_DAYS = 14;
+    private static final long DAY_MS = 24L * 60 * 60 * 1000;
 
     public TeamService(BusinessAccessHelper accessHelper, BusinessUserRepo businessUserRepo,
-                       ShopUsersRepository shopUsersRepo, UserAccounts accounts) {
+                       ShopUsersRepository shopUsersRepo, UserAccounts accounts,
+                       UserRepository userRepo, InvitationRepository invitationRepo) {
+        this.userRepo = userRepo;
+        this.invitationRepo = invitationRepo;
         this.accessHelper = accessHelper;
         this.businessUserRepo = businessUserRepo;
         this.shopUsersRepo = shopUsersRepo;
@@ -46,10 +59,21 @@ public class TeamService {
 
     public record Location(Long id, String name) {}
 
-    public record Member(Long id, Long userId, String name, String email, String phone, UserRoles role,
+    public record Member(Long id, Long userId, String username, String name, String email, String phone, UserRoles role,
                          List<Location> locations, boolean pendingFirstSignIn, boolean you, boolean canManage) {}
 
-    public record Team(List<Member> members, List<UserRoles> rolesYouCanAssign) {}
+    public record Team(List<Member> members, List<UserRoles> rolesYouCanAssign, List<SentInvitation> invitations) {}
+
+    /** Invite someone who already has an account, by their username. */
+    public record Invite(String username, UserRoles role, List<Long> shopIds) {}
+
+    /** An open invitation, as the company sees it. */
+    public record SentInvitation(Long id, Long userId, String username, String name, UserRoles role,
+                                 List<Location> locations, String invitedBy, Date sentAt, Date expiresAt, boolean canManage) {}
+
+    /** An open invitation, as the invited person sees it. */
+    public record MyInvitation(Long id, Long businessId, String businessName, String businessLogo, UserRoles role,
+                               List<String> locations, String invitedBy, Date sentAt, Date expiresAt) {}
 
     public record NewMember(String firstName, String lastName, String email, String phone, UserRoles role, List<Long> shopIds) {}
 
@@ -73,10 +97,155 @@ public class TeamService {
                 .sorted(Comparator.comparingInt((BusinessUser m) -> ASSIGNABLE.indexOf(m.getRoles()) < 0 ? -1 : ASSIGNABLE.indexOf(m.getRoles()))
                         .thenComparing(m -> UserAccounts.displayName(m.getUser())))
                 .map(m -> view(m, actor, assignments.getOrDefault(m.getId(), List.of()))).toList();
-        return new Team(members, assignableBy(actor));
+        return new Team(members, assignableBy(actor), openInvitations(business, actor));
+    }
+
+    private List<SentInvitation> openInvitations(Business business, BusinessUser actor) {
+        Date now = new Date();
+        return invitationRepo.findByBusinessAndStatusOrderByCreatedAtDesc(business, InvitationStatus.PENDING).stream()
+                .filter(inv -> inv.isOpen(now))
+                .map(inv -> sentView(inv, actor)).toList();
+    }
+
+    /** Invitations waiting for you to answer. */
+    public List<MyInvitation> myInvitations(String email) {
+        User me = accessHelper.requireUser(email);
+        Date now = new Date();
+        return invitationRepo.findByInviteeAndStatusOrderByCreatedAtDesc(me, InvitationStatus.PENDING).stream()
+                .filter(inv -> inv.isOpen(now))
+                .filter(inv -> usable(inv.getBusiness()))
+                .map(inv -> new MyInvitation(inv.getId(), inv.getBusiness().getId(), inv.getBusiness().getName(),
+                        inv.getBusiness().getBusinessLogo(), inv.getRole(),
+                        locationsOf(inv).stream().map(Shop::getShopName).toList(),
+                        UserAccounts.displayName(inv.getInvitedBy()), inv.getCreatedAt(), inv.getExpiresAt()))
+                .toList();
     }
 
     // ── Commands ─────────────────────────────────────────────────────────────
+
+    /**
+     * Invites someone who already has an account. They join only when they accept.
+     * Inviting someone again while an invitation is open updates it (role, locations, expiry).
+     */
+    @Transactional
+    public SentInvitation invite(Long businessId, Invite req, String email) {
+        BusinessUser actor = accessHelper.requireManager(businessId, email);
+        Business business = accessHelper.requireBusiness(businessId);
+        if (req == null) throw new AppException(HttpStatus.BAD_REQUEST, "Enter a username");
+        UserRoles role = req.role() != null ? req.role() : UserRoles.CASHIER;
+        requireCanAssign(actor, role);
+        List<Shop> shops = requireShops(req.shopIds(), businessId);
+        User invitee = requireInvitable(req.username());
+        return sentView(openInvitation(business, invitee, actor, role, shops, email), actor);
+    }
+
+    /** The person must already have an account. */
+    User requireInvitable(String rawUsername) {
+        String username = Usernames.clean(rawUsername);
+        if (username.isEmpty()) throw new AppException(HttpStatus.BAD_REQUEST, "Enter a username");
+        User invitee = userRepo.findByUsername(username);
+        if (invitee == null || Boolean.TRUE.equals(invitee.getDeleted()) || Boolean.TRUE.equals(invitee.getSuperAdmin())) {
+            throw new AppException(HttpStatus.NOT_FOUND, "No one has the username @" + username);
+        }
+        return invitee;
+    }
+
+    /** Creates (or refreshes) the open invitation for this person. */
+    Invitation openInvitation(Business business, User invitee, BusinessUser actor, UserRoles role, List<Shop> shops, String by) {
+        if (invitee.getId().equals(actor.getUser().getId())) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "You're already in this company");
+        }
+        BusinessUser existing = businessUserRepo.findByBusinessAndUser(business, invitee);
+        if (existing != null && existing.isActiveMember()) {
+            throw new AppException(HttpStatus.CONFLICT, UserAccounts.displayName(invitee) + " is already on the team");
+        }
+        Date now = new Date();
+        Invitation inv = invitationRepo.findFirstByBusinessAndInviteeAndStatus(business, invitee, InvitationStatus.PENDING);
+        if (inv == null) {
+            inv = new Invitation();
+            inv.setBusiness(business);
+            inv.setInvitee(invitee);
+            inv.setStatus(InvitationStatus.PENDING);
+            inv.setCreatedBy(by);
+        } else {
+            inv.setUpdatedBy(by);
+            inv.setUpdatedAt(now);
+        }
+        inv.setInvitedBy(actor.getUser());
+        inv.setRole(role);
+        inv.setLocationIdList(shops.stream().map(Shop::getId).toList());
+        inv.setCreatedAt(now); // the "sent" date: a re-sent invitation counts from now
+        inv.setExpiresAt(new Date(now.getTime() + INVITE_DAYS * DAY_MS));
+        inv = invitationRepo.save(inv);
+        log.info("{} invited @{} as {} to business {}", by, invitee.getUsername(), role, business.getCode());
+        return inv;
+    }
+
+    /** Sends the invitation again: open for another INVITE_DAYS days. */
+    @Transactional
+    public SentInvitation resendInvitation(Long businessId, Long invitationId, String email) {
+        BusinessUser actor = accessHelper.requireManager(businessId, email);
+        Invitation inv = requireCompanyInvitation(actor, invitationId, businessId);
+        Date now = new Date();
+        inv.setCreatedAt(now);
+        inv.setExpiresAt(new Date(now.getTime() + INVITE_DAYS * DAY_MS));
+        inv.setUpdatedBy(email);
+        inv.setUpdatedAt(now);
+        return sentView(invitationRepo.save(inv), actor);
+    }
+
+    @Transactional
+    public void cancelInvitation(Long businessId, Long invitationId, String email) {
+        BusinessUser actor = accessHelper.requireManager(businessId, email);
+        Invitation inv = requireCompanyInvitation(actor, invitationId, businessId);
+        inv.setStatus(InvitationStatus.CANCELLED);
+        inv.setRespondedAt(new Date());
+        inv.setUpdatedBy(email);
+        inv.setUpdatedAt(new Date());
+        invitationRepo.save(inv);
+    }
+
+    /** You join the company with the role and locations in the invitation. */
+    @Transactional
+    public BusinessMembershipDTO acceptInvitation(Long invitationId, String email) {
+        User me = accessHelper.requireUser(email);
+        Invitation inv = requireMyOpenInvitation(me, invitationId);
+        Business business = inv.getBusiness();
+        if (!usable(business)) {
+            throw new AppException(HttpStatus.CONFLICT, business.getName() + " can't take new people right now");
+        }
+        BusinessUser bu = businessUserRepo.findByBusinessAndUser(business, me);
+        if (bu == null || !bu.isActiveMember()) {
+            if (bu == null) {
+                bu = new BusinessUser();
+                bu.setBusiness(business);
+                bu.setUser(me);
+                bu.setCreatedBy(email);
+                bu.setCreatedAt(new Date());
+            } else {
+                bu.setUpdatedBy(email);
+                bu.setUpdatedAt(new Date());
+            }
+            bu.setRoles(inv.getRole());
+            bu.setActive(true);
+            bu = businessUserRepo.save(bu);
+            syncLocations(bu, locationsOf(inv), email);
+        }
+        inv.setStatus(InvitationStatus.ACCEPTED);
+        inv.setRespondedAt(new Date());
+        invitationRepo.save(inv);
+        log.info("@{} joined business {} as {}", me.getUsername(), business.getCode(), inv.getRole());
+        return new BusinessMembershipDTO(bu);
+    }
+
+    @Transactional
+    public void declineInvitation(Long invitationId, String email) {
+        User me = accessHelper.requireUser(email);
+        Invitation inv = requireMyOpenInvitation(me, invitationId);
+        inv.setStatus(InvitationStatus.DECLINED);
+        inv.setRespondedAt(new Date());
+        invitationRepo.save(inv);
+    }
 
     @Transactional
     public Added add(Long businessId, NewMember req, String email) {
@@ -226,6 +395,58 @@ public class TeamService {
         }
     }
 
+    // ── Invitation helpers ───────────────────────────────────────────────────
+
+    private Invitation requireCompanyInvitation(BusinessUser actor, Long invitationId, Long businessId) {
+        Invitation inv = invitationRepo.findById(invitationId)
+                .filter(i -> i.getBusiness().getId().equals(businessId) && i.getStatus() == InvitationStatus.PENDING)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invitation not found"));
+        requireCanAssign(actor, inv.getRole()); // managers handle invitations for the roles they can give
+        return inv;
+    }
+
+    private Invitation requireMyOpenInvitation(User me, Long invitationId) {
+        Invitation inv = invitationRepo.findById(invitationId)
+                .filter(i -> i.getInvitee().getId().equals(me.getId()))
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Invitation not found"));
+        if (inv.getStatus() != InvitationStatus.PENDING) {
+            throw new AppException(HttpStatus.CONFLICT, "This invitation was " + inv.getStatus().name().toLowerCase());
+        }
+        if (!inv.isOpen(new Date())) {
+            inv.setStatus(InvitationStatus.EXPIRED);
+            invitationRepo.save(inv);
+            throw new AppException(HttpStatus.CONFLICT, "This invitation has expired. Ask them to send it again.");
+        }
+        return inv;
+    }
+
+    private static boolean usable(Business b) {
+        return !Boolean.TRUE.equals(b.getDeleted()) && !Boolean.TRUE.equals(b.getSuspended());
+    }
+
+    /** The invitation's locations that still exist. */
+    private List<Shop> locationsOf(Invitation inv) {
+        List<Shop> shops = new ArrayList<>();
+        for (Long id : inv.locationIdList()) {
+            try {
+                Shop shop = accessHelper.requireShopInBusiness(id, inv.getBusiness().getId());
+                if (!Boolean.TRUE.equals(shop.getDeleted())) shops.add(shop);
+            } catch (AppException gone) {
+                // Location removed since the invitation was sent.
+            }
+        }
+        return shops;
+    }
+
+    private SentInvitation sentView(Invitation inv, BusinessUser actor) {
+        User u = inv.getInvitee();
+        List<Location> locations = locationsOf(inv).stream()
+                .map(shop -> new Location(shop.getId(), shop.getShopName())).toList();
+        return new SentInvitation(inv.getId(), u.getId(), u.getUsername(), UserAccounts.displayName(u), inv.getRole(),
+                locations, UserAccounts.displayName(inv.getInvitedBy()), inv.getCreatedAt(), inv.getExpiresAt(),
+                assignableBy(actor).contains(inv.getRole()));
+    }
+
     private Member view(BusinessUser m, BusinessUser actor) {
         return view(m, actor, shopUsersRepo.findActiveByBusinessUser(m));
     }
@@ -236,7 +457,7 @@ public class TeamService {
                 .map(su -> new Location(su.getShop().getId(), su.getShop().getShopName()))
                 .sorted(Comparator.comparing(Location::name)).toList();
         User u = m.getUser();
-        return new Member(m.getId(), u.getId(), UserAccounts.displayName(u), u.getEmail(), u.getTelephonePrimary(),
+        return new Member(m.getId(), u.getId(), u.getUsername(), UserAccounts.displayName(u), u.getEmail(), u.getTelephonePrimary(),
                 m.getRoles(), locations, Boolean.TRUE.equals(u.getMustChangePassword()),
                 m.getId().equals(actor.getId()), canManage(actor, m));
     }
