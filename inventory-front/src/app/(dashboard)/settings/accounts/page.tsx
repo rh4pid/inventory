@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import Link from "next/link";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
@@ -66,6 +67,7 @@ export default function AccountsPage() {
             <Button variant="outline" onClick={setupDefaults} disabled={setting}>
               <RefreshCw className={`h-4 w-4 ${setting ? "animate-spin" : ""}`} /> {setting ? "Checking…" : "Add missing standard accounts"}
             </Button>
+            <ImportButton kind="accounts" label="Upload accounts & opening balances" onDone={load} />
             <Button onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> New account</Button>
           </div>
         } />

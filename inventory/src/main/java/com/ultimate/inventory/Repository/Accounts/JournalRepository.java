@@ -14,6 +14,8 @@ import java.util.Optional;
 
 @Repository
 public interface JournalRepository extends JpaRepository<Journal, Long> {
+    /** e.g. the opening balances an upload posted (reference starts with OPENBAL-). */
+    Optional<Journal> findFirstByBusinessAndReferenceStartingWithOrderByIdAsc(Business business, String prefix);
     Page<Journal> findByBusiness(Business business, Pageable pageable);
     Page<Journal> findByShop(Shop shop, Pageable pageable);
     List<Journal> findByBusinessAndReferenceAndStatus(Business business, String reference,

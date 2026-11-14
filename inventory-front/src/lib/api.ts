@@ -1,5 +1,5 @@
 import type {
-  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, User, BusinessMembership,
+  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, ImportKind, ImportResult, User, BusinessMembership,
   Product, ProductPayload, Category, CategoryPayload,
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
@@ -45,6 +45,30 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (text || null) as unknown as T;
 }
 
+/** Downloads a file from the API (with the session) and saves it under {@code filename}. */
+async function download(path: string, filename: string): Promise<void> {
+  const headers = new Headers();
+  if (_token) headers.set("Authorization", `Bearer ${_token}`);
+  const res = await fetch(`${BASE}${path}`, { headers, credentials: "include" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, err.message ?? res.statusText);
+  }
+  saveBlob(await res.blob(), filename);
+}
+
+/** Saves data the app already has (e.g. a CSV it built) as a file. */
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function qs(params?: Record<string, string | number | boolean | undefined>): string {
   if (!params) return "";
   const p = new URLSearchParams();
@@ -78,6 +102,18 @@ export const users = {
   invitations: () => req<MyInvitation[]>("/users/me/invitations"),
   acceptInvitation: (id: number) => req<BusinessMembership>(`/users/me/invitations/${id}/accept`, { method: "POST" }),
   declineInvitation: (id: number) => req<void>(`/users/me/invitations/${id}/decline`, { method: "POST" }),
+};
+
+// ── Spreadsheet uploads (all or nothing) ─────────────────────────────────────
+export const imports = {
+  template: (businessId: number, kind: ImportKind) =>
+    download(`/businesses/${businessId}/imports/${kind}/template`, `${kind}-template.xlsx`),
+  /** check=true only checks the file; otherwise it's saved if every row is fine. */
+  upload: (businessId: number, kind: ImportKind, file: File, check: boolean) => {
+    const body = new FormData();
+    body.append("file", file);
+    return req<ImportResult>(`/businesses/${businessId}/imports/${kind}${qs({ check })}`, { method: "POST", body });
+  },
 };
 
 // ── Your own companies ───────────────────────────────────────────────────────

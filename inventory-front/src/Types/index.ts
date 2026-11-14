@@ -23,6 +23,20 @@ export interface SignUpPayload {
 }
 export interface UsernameCheck { username: string; available: boolean; reason?: string | null; }
 /** What anyone may see about a person found by username. */
+// ── Spreadsheet uploads ──────────────────────────────────────────────────────
+export type ImportKind = "products" | "locations" | "people" | "customers" | "suppliers" | "accounts" | "employees";
+
+/** What an upload did, or why it didn't (all or nothing: with errors, nothing was saved). */
+export interface ImportResult {
+  kind: ImportKind; checkOnly: boolean; ok: boolean; saved: boolean;
+  rows: number; created: number; updated: number; invited: number;
+  /** row is the spreadsheet row number (header = 1); 0 means the whole file. */
+  errors: { row: number; column?: string | null; message: string }[];
+  /** Sign-ins created by a team upload, shown once. */
+  credentials: { name: string; email: string; username?: string; temporaryPassword: string }[];
+  notes: string[];
+}
+
 /** A company you create for yourself (you become its owner). */
 export interface NewCompanyPayload { name: string; businessType?: string; email?: string; contact?: string; }
 export interface PublicProfile { id: number; username: string; name: string; profilePicture?: string; }

@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
@@ -78,9 +79,12 @@ export default function ProductsPage() {
         title="Products"
         description={`${total} items in catalog`}
         action={canEdit && (
-          <Link href="/products/new">
-            <Button><Plus className="h-4 w-4" /> Add Product</Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="products" onDone={load} />
+            <Link href="/products/new">
+              <Button><Plus className="h-4 w-4" /> Add Product</Button>
+            </Link>
+          </div>
         )}
       />
 

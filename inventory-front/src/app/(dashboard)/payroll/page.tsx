@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -77,10 +78,13 @@ export default function PayrollPage() {
         title="Payroll & HR"
         description="Manage employees and salary records"
         action={
-          <Button onClick={() => router.push("/payroll/new")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="employees" onDone={load} />
+            <Button onClick={() => router.push("/payroll/new")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </div>
         }
       />
 

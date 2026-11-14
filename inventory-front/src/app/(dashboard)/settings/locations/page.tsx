@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { errorMessage } from "@/lib/utils";
 import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
@@ -83,7 +84,12 @@ export default function LocationsSettingsPage() {
       <PageHeader
         title="Locations"
         description="Every place you hold stock: shops, warehouses, storerooms, vans…"
-        action={canEdit && <Button size="sm" onClick={() => open("new")}><Plus className="h-4 w-4" /> Add location</Button>}
+        action={canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="locations" onDone={load} />
+            <Button size="sm" onClick={() => open("new")}><Plus className="h-4 w-4" /> Add location</Button>
+          </div>
+        )}
       />
 
       {list.length === 0 ? (

@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
 import { Check, KeyRound, Loader2, MoreHorizontal, Pencil, Plus, RotateCw, UserMinus, X } from "lucide-react";
@@ -119,7 +120,12 @@ export default function TeamPage() {
       <PageHeader
         title="Team"
         description="Invite people by their username, or create sign-ins for new people. Choose what they do and where they work."
-        action={data.rolesYouCanAssign.length > 0 && <Button onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Add person</Button>}
+        action={data.rolesYouCanAssign.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="people" onDone={() => { load(); refreshLocations(); }} />
+            <Button onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Add person</Button>
+          </div>
+        )}
       />
 
       <div className="overflow-hidden rounded-4xl border border-line/80 bg-surface shadow-card">

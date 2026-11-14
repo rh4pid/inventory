@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -85,7 +86,12 @@ export default function SuppliersPage() {
       <PageHeader
         title="Suppliers"
         description={`${total} suppliers`}
-        action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Supplier</Button>}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="suppliers" onDone={load} />
+            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Supplier</Button>
+          </div>
+        }
       />
 
       {items.length === 0 && !loading ? (
