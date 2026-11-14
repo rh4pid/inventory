@@ -36,8 +36,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="app-canvas h-dvh p-0 md:p-4 lg:p-5">
-      <div className="flex h-full flex-col overflow-hidden bg-frame md:rounded-4xl md:border md:border-white/70 md:shadow-float">
+    <div className="h-dvh">
+      <div className="flex h-full flex-col overflow-hidden bg-frame">
         <header className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-4 md:px-8 md:pt-6">
           <LogoMark className="h-9 w-9" />
           <div className="min-w-0">

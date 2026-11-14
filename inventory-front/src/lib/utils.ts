@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /** The active company's currency symbol; set from its settings (SettingsProvider). */
-let currencySymbol = "$";
+let currencySymbol = "GH₵";
 export function setCurrencySymbol(symbol?: string | null) {
-  currencySymbol = symbol && symbol.trim() ? symbol.trim() : "$";
+  currencySymbol = symbol && symbol.trim() ? symbol.trim() : "GH₵";
 }
 
 /** Money in the company's currency, e.g. "GH₵1,250.00". Pass `symbol` only to override. */

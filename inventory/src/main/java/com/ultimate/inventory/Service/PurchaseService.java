@@ -19,6 +19,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Date;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class PurchaseService {
 

@@ -19,6 +19,8 @@ import java.util.*;
  * The super admin's console: companies and their administrators. The super admin manages the
  * platform, not the companies' data: nothing here reads sales, stock or customers.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class AdminService {
 
@@ -33,10 +35,13 @@ public class AdminService {
     private final StockMovementRepository movementRepo;
     private final SettingsService settingsService;
     private final UserAccounts accounts;
+    private final AccountService accountService;
 
     public AdminService(BusinessAccessHelper accessHelper, BusinessRepository businessRepo,
                         BusinessUserRepo businessUserRepo, ShopRepository shopRepo, ProductRepository productRepo,
-                        StockMovementRepository movementRepo, SettingsService settingsService, UserAccounts accounts) {
+                        StockMovementRepository movementRepo, SettingsService settingsService, UserAccounts accounts,
+                        AccountService accountService) {
+        this.accountService = accountService;
         this.accessHelper = accessHelper;
         this.businessRepo = businessRepo;
         this.businessUserRepo = businessUserRepo;
@@ -112,6 +117,7 @@ public class AdminService {
         b.setCode("BIZ" + String.format("%05d", b.getId()));
         b = businessRepo.save(b);
         settingsService.applyBusinessType(b, req.businessType() != null ? req.businessType() : BusinessType.GENERAL_RETAIL, email);
+        accountService.ensureDefaults(b, email); // the standard chart of accounts, ready to post to
 
         Credentials creds = addAdminTo(b, req.admin(), email);
         log.info("Company {} ({}) created by super admin {} with admin {}", b.getCode(), b.getName(), email, creds.email());

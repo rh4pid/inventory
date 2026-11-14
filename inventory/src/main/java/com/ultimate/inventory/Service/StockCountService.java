@@ -20,6 +20,8 @@ import java.util.*;
  * Non-managers see a blind count (no system quantities) and, when approvals are required,
  * submit the count for a manager to post.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class StockCountService {
 

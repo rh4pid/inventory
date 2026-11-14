@@ -16,7 +16,7 @@ import com.ultimate.inventory.Repository.ShopRepository;
 import com.ultimate.inventory.Repository.ShopUsersRepository;
 import com.ultimate.inventory.Repository.UserRepository;
 import com.ultimate.inventory.utils.ExcelService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +30,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class ShopService {
 

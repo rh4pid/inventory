@@ -12,7 +12,9 @@ import java.util.Optional;
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Long> {
     List<Account> findByBusinessAndActiveTrue(Business business);
-    Optional<Account> findByBusinessAndAccountPurpose(Business business, AccountPurpose purpose);
+    Optional<Account> findFirstByBusinessAndAccountPurposeAndActiveTrueOrderByIdAsc(Business business, AccountPurpose purpose);
+    List<Account> findByBusinessOrderByAccountCodeAsc(Business business);
+    List<Account> findByBusinessAndActiveTrueOrderByAccountCodeAsc(Business business);
     Optional<Account> findByIdAndBusiness(Long id, Business business);
     boolean existsByBusinessAndAccountCode(Business business, String accountCode);
 }

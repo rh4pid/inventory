@@ -18,10 +18,10 @@ public class BusinessSettings extends Model {
     private Business business;
 
     @Column(name = "currency_code", length = 10)
-    private String currencyCode = "USD";
+    private String currencyCode = "GHS";
 
     @Column(name = "currency_symbol", length = 10)
-    private String currencySymbol = "$";
+    private String currencySymbol = "GH₵";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "business_type", length = 50)

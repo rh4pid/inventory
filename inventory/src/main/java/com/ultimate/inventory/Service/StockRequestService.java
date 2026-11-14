@@ -18,6 +18,8 @@ import java.util.Date;
 import java.util.List;
 
 /** Approve, reject or cancel stock changes that are waiting for a manager. */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class StockRequestService {
 

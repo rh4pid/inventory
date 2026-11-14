@@ -11,6 +11,8 @@ import type {
   BusinessSettings, BusinessSettingsPayload, BusinessTypeOption,
   InvoiceDetailView, ReturnPayload, PaymentMethod, DashboardData,
   BusinessProfile, Company, CompanyResult, CreateCompanyPayload, NewPerson, TeamList, TeamMember, TeamAdded, NewTeamMember, UserRole,
+  AccountingSummary, AccountRef, JournalView, JournalType, Ledger, TrialBalance, ProfitAndLoss, BalanceSheet, CatchUpResult,
+  OwnerMoneyPayload, TransferPayload, ManualJournalPayload, Expense, ExpenseOptions, ExpensePayload, ExpenseStatus,
 } from "@/Types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
@@ -365,4 +367,48 @@ export const team = {
     req<TeamAdded>(`/businesses/${businessId}/team/${memberId}/reset-password`, { method: "POST" }),
   remove: (businessId: number, memberId: number) =>
     req<void>(`/businesses/${businessId}/team/${memberId}`, { method: "DELETE" }),
+};
+
+// ── Accounting: the books and reports (admins) ───────────────────────────────
+export const accounting = {
+  summary: (businessId: number) => req<AccountingSummary>(`/businesses/${businessId}/accounting/summary`),
+  moneyAccounts: (businessId: number) => req<AccountRef[]>(`/businesses/${businessId}/accounting/money-accounts`),
+  capital: (businessId: number, data: OwnerMoneyPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/capital`, { method: "POST", body: JSON.stringify(data) }),
+  drawings: (businessId: number, data: OwnerMoneyPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/drawings`, { method: "POST", body: JSON.stringify(data) }),
+  transfer: (businessId: number, data: TransferPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/transfers`, { method: "POST", body: JSON.stringify(data) }),
+  journals: (businessId: number, params?: { type?: JournalType; from?: string; to?: string; page?: number; size?: number }) =>
+    req<PageResponse<JournalView>>(`/businesses/${businessId}/accounting/journals${qs(params)}`),
+  manualJournal: (businessId: number, data: ManualJournalPayload) =>
+    req<JournalView>(`/businesses/${businessId}/accounting/journals`, { method: "POST", body: JSON.stringify(data) }),
+  ledger: (businessId: number, accountId: number, params?: { from?: string; to?: string }) =>
+    req<Ledger>(`/businesses/${businessId}/accounting/ledger/${accountId}${qs(params)}`),
+  trialBalance: (businessId: number, asOf?: string) =>
+    req<TrialBalance>(`/businesses/${businessId}/accounting/reports/trial-balance${qs({ asOf })}`),
+  profitLoss: (businessId: number, params?: { from?: string; to?: string }) =>
+    req<ProfitAndLoss>(`/businesses/${businessId}/accounting/reports/profit-loss${qs(params)}`),
+  balanceSheet: (businessId: number, asOf?: string) =>
+    req<BalanceSheet>(`/businesses/${businessId}/accounting/reports/balance-sheet${qs({ asOf })}`),
+  catchUp: (businessId: number) =>
+    req<CatchUpResult>(`/businesses/${businessId}/accounting/catch-up`, { method: "POST" }),
+};
+
+// ── Expenses (petty cash; cashiers' need a manager's approval) ───────────────
+export const expenses = {
+  list: (businessId: number, params?: { status?: ExpenseStatus; shopId?: number; page?: number; size?: number }) =>
+    req<PageResponse<Expense>>(`/businesses/${businessId}/expenses${qs(params)}`),
+  options: (businessId: number) => req<ExpenseOptions>(`/businesses/${businessId}/expenses/options`),
+  pendingCount: (businessId: number) => req<{ count: number }>(`/businesses/${businessId}/expenses/pending-count`),
+  create: (businessId: number, data: ExpensePayload) =>
+    req<Expense>(`/businesses/${businessId}/expenses`, { method: "POST", body: JSON.stringify(data) }),
+  approve: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/approve`, { method: "POST", body: JSON.stringify({ note }) }),
+  reject: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/reject`, { method: "POST", body: JSON.stringify({ note }) }),
+  cancel: (businessId: number, id: number) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/cancel`, { method: "POST" }),
+  void: (businessId: number, id: number, note?: string) =>
+    req<Expense>(`/businesses/${businessId}/expenses/${id}/void`, { method: "POST", body: JSON.stringify({ note }) }),
 };

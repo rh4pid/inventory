@@ -57,8 +57,8 @@ export default function BusinessInfoPage() {
       setProfile(p);
       if (form.currencyCode !== settings.currencyCode || form.currencySymbol !== settings.currencySymbol) {
         setSettings(await settingsApi.update(bizId, {
-          currencyCode: form.currencyCode.trim().toUpperCase() || "USD",
-          currencySymbol: form.currencySymbol.trim() || "$",
+          currencyCode: form.currencyCode.trim().toUpperCase() || "GHS",
+          currencySymbol: form.currencySymbol.trim() || "GH₵",
         }));
       }
       await refreshBusinesses();

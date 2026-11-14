@@ -20,6 +20,8 @@ import java.util.*;
  * Who can manage whom: owners and admins manage everyone except owners; managers manage
  * cashiers, staff and drivers. Nobody changes their own role or removes themselves.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class TeamService {
 
@@ -61,11 +63,16 @@ public class TeamService {
     public Team list(Long businessId, String email) {
         BusinessUser actor = accessHelper.requireManager(businessId, email);
         Business business = accessHelper.requireBusiness(businessId);
-        List<Member> members = businessUserRepo.findAllByBusiness(business).stream()
-                .filter(BusinessUser::isActiveMember)
+        List<BusinessUser> active = businessUserRepo.findAllByBusiness(business).stream()
+                .filter(BusinessUser::isActiveMember).toList();
+        // Everyone's locations in one query rather than one per person.
+        java.util.Map<Long, List<ShopUsers>> assignments = active.isEmpty() ? java.util.Map.of()
+                : shopUsersRepo.findActiveByBusinessUsers(active).stream()
+                        .collect(java.util.stream.Collectors.groupingBy(su -> su.getBusinessUser().getId()));
+        List<Member> members = active.stream()
                 .sorted(Comparator.comparingInt((BusinessUser m) -> ASSIGNABLE.indexOf(m.getRoles()) < 0 ? -1 : ASSIGNABLE.indexOf(m.getRoles()))
                         .thenComparing(m -> UserAccounts.displayName(m.getUser())))
-                .map(m -> view(m, actor)).toList();
+                .map(m -> view(m, actor, assignments.getOrDefault(m.getId(), List.of()))).toList();
         return new Team(members, assignableBy(actor));
     }
 
@@ -220,7 +227,11 @@ public class TeamService {
     }
 
     private Member view(BusinessUser m, BusinessUser actor) {
-        List<Location> locations = shopUsersRepo.findActiveByBusinessUser(m).stream()
+        return view(m, actor, shopUsersRepo.findActiveByBusinessUser(m));
+    }
+
+    private Member view(BusinessUser m, BusinessUser actor, List<ShopUsers> assignments) {
+        List<Location> locations = assignments.stream()
                 .filter(su -> su.getShop() != null && !Boolean.TRUE.equals(su.getShop().getDeleted()))
                 .map(su -> new Location(su.getShop().getId(), su.getShop().getShopName()))
                 .sorted(Comparator.comparing(Location::name)).toList();

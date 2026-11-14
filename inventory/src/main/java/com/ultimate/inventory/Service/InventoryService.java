@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
  * When the business requires approval, stock-outs and adjustments by non-managers are saved as
  * {@link StockRequest}s instead and applied by {@link StockRequestService} once approved.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class InventoryService {
 
@@ -89,11 +91,14 @@ public class InventoryService {
     private final UnitService unitService;
     private final SettingsService settingsService;
     private final BatchService batchService;
+    private final JournalService journalService;
 
     public InventoryService(InventoryRepository inventoryRepo, ProductRepository productRepo,
                             StockMovementRepository movementRepo, StockBatchRepository batchRepo,
                             StockRequestRepository requestRepo, BusinessAccessHelper accessHelper,
-                            UnitService unitService, SettingsService settingsService, BatchService batchService) {
+                            UnitService unitService, SettingsService settingsService, BatchService batchService,
+                            JournalService journalService) {
+        this.journalService = journalService;
         this.inventoryRepo = inventoryRepo;
         this.productRepo = productRepo;
         this.movementRepo = movementRepo;
@@ -118,8 +123,14 @@ public class InventoryService {
         Double baseCost = dto.getCostPrice() != null ? dto.getCostPrice() / c.factor() : null;
         BatchInfo info = BatchInfo.of(dto.getBatchNumber(), dto.getExpiryDate(), baseCost,
                 dto.getSupplierId(), "Stock in");
-        return receive(product, shop, c.toBase(dto.getQuantity()), StockMovementType.STOCK_IN, dto.getSupplierId(),
+        double baseQty = c.toBase(dto.getQuantity());
+        Inventory saved = receive(product, shop, baseQty, StockMovementType.STOCK_IN, dto.getSupplierId(),
                 Ctx.of(dto.getNotes(), userEmail).withEntered(Entered.of(dto.getQuantity(), c)), info);
+        // No purchase behind it, so its value enters the books here (as stock the owner brought in).
+        double unitCost = baseCost != null ? baseCost : product.getCostPrice() != null ? product.getCostPrice() : 0;
+        journalService.postStockInJournal(business, shop, java.math.BigDecimal.valueOf(baseQty * unitCost),
+                "Stock in: " + fmt(baseQty) + " × " + product.getProductName() + " at " + shop.getShopName(), userEmail);
+        return saved;
     }
 
     /** Stock leaving without a sale (write-off, damage…). Needs approval for non-managers when switched on. */
@@ -148,8 +159,15 @@ public class InventoryService {
     @Transactional
     public Inventory executeStockOut(Product product, Shop shop, double enteredQty, Long unitId, Long batchId, Ctx ctx) {
         UnitService.Conversion c = unitService.resolve(product, unitId);
-        return deduct(product, shop, c.toBase(enteredQty), StockMovementType.STOCK_OUT,
-                ctx.withEntered(Entered.of(enteredQty, c)), batchId).inventory();
+        double baseQty = c.toBase(enteredQty);
+        Deduction out = deduct(product, shop, baseQty, StockMovementType.STOCK_OUT,
+                ctx.withEntered(Entered.of(enteredQty, c)), batchId);
+        // Stock leaving without a sale is a loss at what it cost.
+        double cost = out.cost(product.getCostPrice() != null ? product.getCostPrice() : 0);
+        journalService.postStockAdjustmentJournal(shop.getBusiness(), shop, java.math.BigDecimal.valueOf(-cost),
+                "Stock out: " + fmt(baseQty) + " × " + product.getProductName() + " at " + shop.getShopName()
+                        + (ctx.notes() != null ? " (" + ctx.notes() + ")" : ""), ctx.performedBy());
+        return out.inventory();
     }
 
     @Transactional
@@ -442,6 +460,16 @@ public class InventoryService {
         if (Math.abs(qAfter - qBefore) > 1e-9 || touched != null) {
             recordMovement(product, shop, StockMovementType.ADJUSTMENT, qBefore, qAfter - qBefore, qAfter,
                     null, ctx, touched);
+        }
+        if (Math.abs(qAfter - qBefore) > 1e-9) {
+            // Missing stock is a loss, extra stock a gain, at what it cost.
+            double unitCost = touched != null && touched.getUnitCost() != null ? touched.getUnitCost()
+                    : product.getCostPrice() != null ? product.getCostPrice() : 0;
+            journalService.postStockAdjustmentJournal(shop.getBusiness(), shop,
+                    java.math.BigDecimal.valueOf((qAfter - qBefore) * unitCost),
+                    "Stock adjustment: " + product.getProductName() + " at " + shop.getShopName() + " "
+                            + fmt(qBefore) + " → " + fmt(qAfter) + (ctx.notes() != null ? " (" + ctx.notes() + ")" : ""),
+                    ctx.performedBy());
         }
         // Missing stock is removed from the oldest batches.
         if (batches) batchService.reconcile(saved, OPENING, ctx.performedBy());

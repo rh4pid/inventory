@@ -191,16 +191,26 @@ public class DashboardService {
         attention.sort(Comparator.comparingInt(a -> List.of("EXPIRED", "OUT", "EXPIRING", "LOW").indexOf(a.reason())));
 
         // ── Latest orders (sales and purchases) ──
-        List<RecentOrder> recent = new ArrayList<>();
+        List<Invoice> latest = new ArrayList<>();
         for (InvoiceType type : InvoiceType.values()) {
             // Only the orders this person can open: sales for sellers, purchases for receivers.
             if (!BusinessAccessHelper.can(member, type == InvoiceType.SALES ? com.ultimate.inventory.Constants.Capability.SELL
                     : com.ultimate.inventory.Constants.Capability.RECEIVE)) continue;
             invoiceRepo.findByBusinessAndType(business, type,
                             PageRequest.of(0, 15, Sort.by(Sort.Direction.DESC, "id")))
-                    .forEach(inv -> { if (inScope.test(inv.getShop())) recent.add(recentView(inv)); });
+                    .forEach(inv -> { if (inScope.test(inv.getShop())) latest.add(inv); });
         }
-        recent.sort(Comparator.comparing(RecentOrder::id).reversed());
+        // Pick the 6 newest first, then load all their lines in one query (not one query per order).
+        latest.sort(Comparator.comparing(Invoice::getId).reversed());
+        List<Invoice> shown = latest.subList(0, Math.min(6, latest.size()));
+        Map<Long, List<InvoiceDetail>> linesOf = new HashMap<>();
+        if (!shown.isEmpty()) {
+            for (InvoiceDetail d : detailRepo.findByInvoiceIn(shown)) {
+                linesOf.computeIfAbsent(d.getInvoice().getId(), k -> new ArrayList<>()).add(d);
+            }
+        }
+        List<RecentOrder> recent = shown.stream()
+                .map(inv -> recentView(inv, linesOf.getOrDefault(inv.getId(), List.of()))).toList();
 
         // ── Product list with supplier and demand ──
         Map<Long, String> supplierOf = latestSuppliers(business, inScope);
@@ -226,13 +236,12 @@ public class DashboardService {
                 new Stock(in, low, out, dead, products.size()),
                 flow.entrySet().stream().map(e -> new FlowDay(e.getKey(), e.getValue()[0], e.getValue()[1])).toList(),
                 attention.subList(0, Math.min(12, attentionTotal)), attentionTotal,
-                recent.subList(0, Math.min(6, recent.size())), rows);
+                recent, rows);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private RecentOrder recentView(Invoice inv) {
-        List<InvoiceDetail> lines = detailRepo.findByInvoice(inv);
+    private RecentOrder recentView(Invoice inv, List<InvoiceDetail> lines) {
         String headline = lines.isEmpty() ? "No items" : lines.get(0).getProduct().getProductName();
         String party = inv.getType() == InvoiceType.SALES
                 ? (inv.getCustomer() != null ? (inv.getCustomer().getFirstName() + " " +

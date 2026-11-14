@@ -18,6 +18,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class UserService {
 

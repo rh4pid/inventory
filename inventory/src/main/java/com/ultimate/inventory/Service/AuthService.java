@@ -39,6 +39,7 @@ public class AuthService {
     @Autowired private BusinessUserRepo businessUserRepo;
     @Autowired private Security security;
     @Autowired private FileStorage fileStorage;
+    @Autowired private AccountService accountService;
     @org.springframework.beans.factory.annotation.Value("${app.self-signup:false}") private boolean selfSignUp;
 
     public void ensureSignUpOpen() {
@@ -124,6 +125,7 @@ public class AuthService {
         business = businessRepo.save(business);
         business.setCode("BIZ" + String.format("%05d", business.getId()));
         businessRepo.save(business);
+        accountService.ensureDefaults(business, user.getEmail()); // standard chart of accounts
 
         BusinessUser businessUser = new BusinessUser();
         businessUser.setBusiness(business);

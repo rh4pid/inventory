@@ -24,4 +24,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
                                      @org.springframework.data.repository.query.Param("type") InvoiceType type,
                                      @org.springframework.data.repository.query.Param("since") java.util.Date since);
     Optional<Invoice> findByIdAndBusiness(Long id, Business business);
+
+    java.util.List<Invoice> findByBusinessOrderByIdAsc(Business business);
 }

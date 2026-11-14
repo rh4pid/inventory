@@ -11,7 +11,7 @@ export type Capability =
   | "MANAGE_SETTINGS" | "MANAGE_ACCOUNTS" | "MANAGE_PAYROLL" | "MANAGE_TEAM" | "MANAGE_LOCATIONS"
   | "MANAGE_CATALOG" | "MANAGE_SUPPLIERS" | "DELETE_CUSTOMERS" | "VIEW_STOCK" | "VIEW_COSTS"
   | "SELL" | "MANAGE_CUSTOMERS" | "RECEIVE" | "PAY_SUPPLIERS"
-  | "STOCK_IN" | "STOCK_OUT" | "ADJUST" | "TRANSFER" | "COUNT" | "APPROVE" | "RETURNS_AND_VOIDS";
+  | "STOCK_IN" | "STOCK_OUT" | "ADJUST" | "TRANSFER" | "COUNT" | "APPROVE" | "RECORD_EXPENSES" | "RETURNS_AND_VOIDS";
 
 /** `can("SELL")`, or `can(["RECEIVE", "MANAGE_SUPPLIERS"])` for any of several. */
 export function useCan() {
@@ -32,6 +32,8 @@ export const PAGE_RULES: { prefix: string; need: Capability | Capability[] }[] =
   { prefix: "/customers", need: "MANAGE_CUSTOMERS" },
   { prefix: "/suppliers", need: "MANAGE_SUPPLIERS" },
   { prefix: "/payroll", need: "MANAGE_PAYROLL" },
+  { prefix: "/accounting", need: "MANAGE_ACCOUNTS" },
+  { prefix: "/expenses", need: ["RECORD_EXPENSES", "APPROVE"] },
   { prefix: "/categories", need: "MANAGE_CATALOG" },
   { prefix: "/products/new", need: "MANAGE_CATALOG" },
   { prefix: "/inventory/counts", need: "COUNT" },

@@ -445,9 +445,11 @@ export interface PaymentPayload {
 // ── Accounts ─────────────────────────────────────────────────────────────────
 export type AccountType = "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
 export type AccountPurpose =
-  | "CASH" | "BANK" | "ACCOUNTS_RECEIVABLE" | "INVENTORY"
-  | "ACCOUNTS_PAYABLE" | "SALES_REVENUE" | "COST_OF_GOODS_SOLD"
-  | "PURCHASE" | "DISCOUNT_ALLOWED" | "TAX_PAYABLE" | "OTHER";
+  | "CASH" | "BANK" | "MOBILE_MONEY" | "PETTY_CASH" | "ACCOUNTS_RECEIVABLE" | "INVENTORY"
+  | "ACCOUNTS_PAYABLE" | "CAPITAL" | "DRAWINGS" | "RETAINED_EARNINGS"
+  | "SALES_REVENUE" | "OTHER_INCOME" | "COST_OF_GOODS_SOLD" | "PURCHASE"
+  | "DISCOUNT_RECEIVED" | "DISCOUNT_ALLOWED" | "STOCK_ADJUSTMENT"
+  | "TAX_PAYABLE" | "TAX_RECEIVABLE" | "EXPENSE" | "OTHER";
 
 export interface Account {
   id: number;
@@ -463,6 +465,84 @@ export interface AccountPayload {
   accountName: string;
   accountType: AccountType;
   accountPurpose?: AccountPurpose;
+  active?: boolean;
+}
+
+// ── Accounting (books & reports) ─────────────────────────────────────────────
+export type JournalType =
+  | "SALE_CASH" | "SALE_CREDIT" | "PURCHASE_CASH" | "PURCHASE_CREDIT" | "CUSTOMER_PAYMENT" | "SUPPLIER_PAYMENT"
+  | "SALE_RETURN" | "PURCHASE_RETURN" | "EXPENSE_CASH" | "EXPENSE_CREDIT" | "STOCK_ADJUSTMENT" | "STOCK_TRANSFER"
+  | "OPENING_BALANCE" | "OWNER_CAPITAL" | "OWNER_DRAWINGS" | "FUND_TRANSFER" | "MANUAL" | "OTHER";
+
+export interface AccountRef { id: number; code: string; name: string; type: AccountType; purpose?: AccountPurpose }
+export interface AccountBalance { account: AccountRef; balance: number }
+
+export interface AccountingSummary {
+  money: AccountBalance[]; totalMoney: number;
+  receivables: number; payables: number; stockValue: number; capital: number;
+  monthStart: string; monthIncome: number; monthCosts: number; monthProfit: number;
+  pendingExpenses: number; invoicesNotInBooks: number;
+}
+
+export interface JournalLine { accountId: number; accountCode: string; accountName: string; debit: number; credit: number; description?: string }
+export interface JournalView {
+  id: number; date: string; reference: string; description: string; type: JournalType;
+  shopName?: string; createdBy?: string; total: number; lines: JournalLine[];
+}
+
+export interface LedgerLine { journalId: number; date: string; reference: string; description: string; debit: number; credit: number; balance: number }
+export interface Ledger {
+  account: AccountRef; from: string; to: string; opening: number;
+  totalDebit: number; totalCredit: number; closing: number; lines: LedgerLine[];
+}
+
+export interface ReportRow { account: AccountRef; amount: number }
+export interface TrialBalance {
+  asOf: string; rows: { account: AccountRef; debit: number; credit: number }[];
+  totalDebit: number; totalCredit: number; balanced: boolean;
+}
+export interface ProfitAndLoss {
+  from: string; to: string;
+  income: ReportRow[]; totalIncome: number;
+  costOfSales: ReportRow[]; totalCostOfSales: number; grossProfit: number;
+  expenses: ReportRow[]; totalExpenses: number; netProfit: number;
+}
+export interface BalanceSheet {
+  asOf: string; assets: ReportRow[]; totalAssets: number;
+  liabilities: ReportRow[]; totalLiabilities: number;
+  equity: ReportRow[]; profitToDate: number; totalEquity: number;
+  totalLiabilitiesAndEquity: number; balanced: boolean;
+}
+export interface CatchUpResult { invoicesPosted: number; paymentsPosted: number; skipped: number; notes: string[] }
+
+export interface OwnerMoneyPayload { amount: number; accountId?: number; method?: PaymentMethod; date?: string; note?: string }
+export interface TransferPayload { fromAccountId: number; toAccountId: number; amount: number; date?: string; note?: string }
+export interface ManualJournalPayload {
+  date?: string; description: string; reference?: string;
+  lines: { accountId: number; debit?: number; credit?: number; memo?: string }[];
+}
+
+// ── Expenses (petty cash) ────────────────────────────────────────────────────
+export type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "VOID";
+
+export interface Expense {
+  id: number; reference: string; date: string; description: string; payee?: string; receiptNumber?: string;
+  amount: number; status: ExpenseStatus;
+  shopId?: number; shopName?: string; expenseAccountId: number; expenseAccountName: string;
+  paidFromId: number; paidFromName: string;
+  requestedBy: string; requestedAt: string; decidedBy?: string; decidedAt?: string; decisionNote?: string;
+  canApprove: boolean; canCancel: boolean; canVoid: boolean;
+}
+
+export interface ExpenseOption { id: number; code: string; name: string; balance?: number | null }
+export interface ExpenseOptions {
+  expenseAccounts: ExpenseOption[]; paidFrom: ExpenseOption[]; defaultPaidFromId?: number | null;
+  branches: { id: number; name: string }[]; needsApproval: boolean; canApprove: boolean;
+}
+
+export interface ExpensePayload {
+  shopId?: number; expenseAccountId: number; paidFromAccountId?: number; amount: number;
+  date?: string; description: string; payee?: string; receiptNumber?: string;
 }
 
 // ── Employees / HR ───────────────────────────────────────────────────────────

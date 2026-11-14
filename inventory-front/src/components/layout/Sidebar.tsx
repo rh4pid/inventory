@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import {
   Home, ScanLine, Package, Tag, Warehouse, ShoppingBag, Truck, Users, Building2,
-  Wallet, Settings, LogOut, X,
+  Wallet, Settings, LogOut, X, Receipt, Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
@@ -31,6 +31,8 @@ export const NAV: { label: string; href: string; icon: Icon; need?: Capability |
   { label: "Purchases",  href: "/purchases",  icon: Truck, need: "RECEIVE" },
   { label: "Customers",  href: "/customers",  icon: Users, need: "MANAGE_CUSTOMERS" },
   { label: "Suppliers",  href: "/suppliers",  icon: Building2, need: "MANAGE_SUPPLIERS" },
+  { label: "Expenses",   href: "/expenses",   icon: Receipt, need: ["RECORD_EXPENSES", "APPROVE"] },
+  { label: "Accounts",   href: "/accounting", icon: Landmark, need: "MANAGE_ACCOUNTS" },
   { label: "Payroll",    href: "/payroll",    icon: Wallet, need: "MANAGE_PAYROLL" },
 ];
 

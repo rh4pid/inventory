@@ -14,7 +14,7 @@ import com.ultimate.inventory.Repository.ShopRepository;
 import com.ultimate.inventory.Repository.ShopUsersRepository;
 import com.ultimate.inventory.Repository.UserRepository;
 import com.ultimate.inventory.utils.ExcelService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +31,8 @@ import java.util.List;
  * Business members and which locations they work at. Owners, admins and managers work at every
  * location; other staff (cashiers, stock staff…) only at the locations they are assigned to.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class StaffService {
 

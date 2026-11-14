@@ -20,6 +20,8 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class PaymentService {
 

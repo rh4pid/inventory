@@ -52,7 +52,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { reload(); }, [reload]);
 
   // Leaving the company app (sign-out, admin console): back to the default look.
-  useEffect(() => () => { clearTheme(); setCurrencySymbol("$"); }, []);
+  useEffect(() => () => { clearTheme(); setCurrencySymbol("GH₵"); }, []);
 
   return (
     <SettingsContext.Provider value={{ settings, setSettings: adopt, reload }}>

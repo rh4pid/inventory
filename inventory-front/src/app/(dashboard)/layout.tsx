@@ -36,8 +36,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SettingsProvider>
     <WorkspaceProvider>
-      <div className="app-canvas h-dvh p-0 md:p-4 lg:p-5">
-        <div className="flex h-full overflow-hidden bg-frame md:rounded-4xl md:border md:border-white/70 md:shadow-float">
+      <div className="h-dvh">
+        <div className="flex h-full overflow-hidden bg-frame">
           <Sidebar />
           <MobileNav open={menuOpen} onClose={() => setMenuOpen(false)} />
           <div className="flex min-w-0 flex-1 flex-col">

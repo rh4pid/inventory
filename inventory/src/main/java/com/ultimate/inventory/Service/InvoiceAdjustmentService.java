@@ -21,6 +21,8 @@ import java.util.*;
  * refunds and voids. Stock goes back through the batches the invoice used, and every money
  * change is mirrored in the books.
  */
+// Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
+@Transactional(readOnly = true)
 @Service
 public class InvoiceAdjustmentService {
 

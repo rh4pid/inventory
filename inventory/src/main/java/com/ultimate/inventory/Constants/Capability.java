@@ -16,6 +16,7 @@ import java.util.*;
  *   transfers                     ✓         ✓        -       ✓      ✓
  *   stock out / adjust            ✓         ✓      request request  -
  *   approvals, returns, voids     ✓         ✓        -       -      -
+ *   record expenses               ✓         ✓     request      -      -
  *   cost prices & stock value     ✓         ✓        -       -      -
  */
 public enum Capability {
@@ -58,8 +59,11 @@ public enum Capability {
     TRANSFER,
     COUNT,
 
-    /** Approve or reject stock requests, post counts. */
+    /** Approve or reject stock requests and expenses, post counts. */
     APPROVE,
+    /** Record business expenses (cashiers' expenses wait for a manager's approval). */
+    RECORD_EXPENSES,
+
     /** Returns, refunds and voids. */
     RETURNS_AND_VOIDS;
 
@@ -68,7 +72,7 @@ public enum Capability {
     static {
         Set<Capability> all = EnumSet.allOf(Capability.class);
         Set<Capability> manager = EnumSet.complementOf(EnumSet.of(MANAGE_SETTINGS, MANAGE_ACCOUNTS, MANAGE_PAYROLL));
-        Set<Capability> cashier = EnumSet.of(VIEW_STOCK, SELL, MANAGE_CUSTOMERS, STOCK_OUT, ADJUST);
+        Set<Capability> cashier = EnumSet.of(VIEW_STOCK, SELL, MANAGE_CUSTOMERS, STOCK_OUT, ADJUST, RECORD_EXPENSES);
         Set<Capability> staff = EnumSet.of(VIEW_STOCK, RECEIVE, STOCK_IN, STOCK_OUT, ADJUST, TRANSFER, COUNT);
         Set<Capability> driver = EnumSet.of(VIEW_STOCK, TRANSFER);
 
