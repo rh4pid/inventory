@@ -31,7 +31,7 @@ public class AuthService {
     @Autowired private BusinessUserRepo businessUserRepo;
     @Autowired private Security security;
     @Autowired private Usernames usernames;
-    @org.springframework.beans.factory.annotation.Value("${app.self-signup:false}") private boolean selfSignUp;
+    @org.springframework.beans.factory.annotation.Value("${app.self-signup:true}") private boolean selfSignUp;
 
     public void ensureSignUpOpen() {
         if (!selfSignUp) {
