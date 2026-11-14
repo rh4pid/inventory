@@ -21,8 +21,10 @@ import java.util.*;
  * A company's people: the company admin (or a manager, for front-line staff) creates sign-ins,
  * sets each person's role and the locations they work at, resets passwords and removes people.
  *
- * Who can manage whom: owners and admins manage everyone except owners; managers manage
- * cashiers, staff and drivers. Nobody changes their own role or removes themselves.
+ * Who can manage whom: owners manage everyone (other owners included) and can make owners;
+ * admins manage everyone except owners; managers change the role and locations of cashiers,
+ * staff and drivers. Only owners and admins remove people. Nobody changes their own access or
+ * leaves on their own, and a company always keeps an owner (or, if it has none, an admin).
  */
 // Reads share one read-only transaction (one connection, one commit, cached lookups); writes declare their own.
 @Transactional(readOnly = true)
@@ -32,8 +34,8 @@ public class TeamService {
     private static final Logger log = LoggerFactory.getLogger(TeamService.class);
     private static final Set<UserRoles> TOP = EnumSet.of(UserRoles.OWNER, UserRoles.ADMIN);
     private static final Set<UserRoles> FRONT_LINE = EnumSet.of(UserRoles.CASHIER, UserRoles.STAFF, UserRoles.DRIVER, UserRoles.SHOPKEEP);
-    /** Roles that can be given out here (OWNER is not handed out; SHOPKEEP is legacy). */
-    private static final List<UserRoles> ASSIGNABLE = List.of(UserRoles.ADMIN, UserRoles.MANAGER, UserRoles.CASHIER, UserRoles.STAFF, UserRoles.DRIVER);
+    /** Roles that can be given out here, top first (OWNER only by owners; SHOPKEEP is legacy). */
+    private static final List<UserRoles> ASSIGNABLE = List.of(UserRoles.OWNER, UserRoles.ADMIN, UserRoles.MANAGER, UserRoles.CASHIER, UserRoles.STAFF, UserRoles.DRIVER);
 
     private final BusinessAccessHelper accessHelper;
     private final BusinessUserRepo businessUserRepo;
@@ -60,7 +62,7 @@ public class TeamService {
     public record Location(Long id, String name) {}
 
     public record Member(Long id, Long userId, String username, String name, String email, String phone, UserRoles role,
-                         List<Location> locations, boolean pendingFirstSignIn, boolean you, boolean canManage) {}
+                         List<Location> locations, boolean pendingFirstSignIn, boolean you, boolean canManage, boolean canRemove) {}
 
     public record Team(List<Member> members, List<UserRoles> rolesYouCanAssign, List<SentInvitation> invitations) {}
 
@@ -296,6 +298,7 @@ public class TeamService {
         BusinessUser bu = requireManageable(actor, memberId, businessId);
         if (req.role() != null && req.role() != bu.getRoles()) {
             requireCanAssign(actor, req.role());
+            if (bu.getRoles() == UserRoles.OWNER) requireAnotherOwner(bu);
             if (TOP.contains(bu.getRoles()) && !TOP.contains(req.role())) requireAnotherAdmin(bu);
             bu.setRoles(req.role());
         }
@@ -329,7 +332,11 @@ public class TeamService {
     @Transactional
     public void remove(Long businessId, Long memberId, String email) {
         BusinessUser actor = accessHelper.requireManager(businessId, email);
+        if (!TOP.contains(actor.getRoles())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Only the owner or an admin can remove people");
+        }
         BusinessUser bu = requireManageable(actor, memberId, businessId);
+        if (bu.getRoles() == UserRoles.OWNER) requireAnotherOwner(bu);
         if (TOP.contains(bu.getRoles())) requireAnotherAdmin(bu);
         shopUsersRepo.deleteAll(shopUsersRepo.findActiveByBusinessUser(bu));
         bu.setActive(false);
@@ -342,15 +349,20 @@ public class TeamService {
     // ── Rules ────────────────────────────────────────────────────────────────
 
     private static List<UserRoles> assignableBy(BusinessUser actor) {
-        if (TOP.contains(actor.getRoles())) return ASSIGNABLE;
+        if (actor.getRoles() == UserRoles.OWNER) return ASSIGNABLE;
+        if (actor.getRoles() == UserRoles.ADMIN) return ASSIGNABLE.stream().filter(r -> r != UserRoles.OWNER).toList();
         return ASSIGNABLE.stream().filter(FRONT_LINE::contains).toList();
     }
 
     private static boolean canManage(BusinessUser actor, BusinessUser target) {
         if (actor.getId().equals(target.getId())) return false;
-        if (target.getRoles() == UserRoles.OWNER) return false;
+        if (target.getRoles() == UserRoles.OWNER) return actor.getRoles() == UserRoles.OWNER;
         if (TOP.contains(actor.getRoles())) return true;
         return actor.getRoles() == UserRoles.MANAGER && FRONT_LINE.contains(target.getRoles());
+    }
+
+    private static boolean canRemove(BusinessUser actor, BusinessUser target) {
+        return TOP.contains(actor.getRoles()) && canManage(actor, target);
     }
 
     private static void requireCanAssign(BusinessUser actor, UserRoles role) {
@@ -368,6 +380,13 @@ public class TeamService {
         }
         if (!canManage(actor, bu)) throw new AppException(HttpStatus.FORBIDDEN, "You can't manage this person");
         return bu;
+    }
+
+    /** A company with owners keeps at least one. */
+    private void requireAnotherOwner(BusinessUser leaving) {
+        boolean another = businessUserRepo.findAllByBusiness(leaving.getBusiness()).stream()
+                .anyMatch(m -> m.isActiveMember() && m.getRoles() == UserRoles.OWNER && !m.getId().equals(leaving.getId()));
+        if (!another) throw new AppException(HttpStatus.CONFLICT, "The company must keep at least one owner. Make someone else an owner first.");
     }
 
     /** A company always keeps at least one owner or admin. */
@@ -469,6 +488,6 @@ public class TeamService {
         User u = m.getUser();
         return new Member(m.getId(), u.getId(), u.getUsername(), UserAccounts.displayName(u), u.getEmail(), u.getTelephonePrimary(),
                 m.getRoles(), locations, Boolean.TRUE.equals(u.getMustChangePassword()),
-                m.getId().equals(actor.getId()), canManage(actor, m));
+                m.getId().equals(actor.getId()), canManage(actor, m), canRemove(actor, m));
     }
 }

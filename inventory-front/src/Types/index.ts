@@ -697,6 +697,8 @@ export interface CompanyResult { company: Company; credentials: HandoverCredenti
 export interface TeamMember {
   id: number; userId: number; username?: string; name: string; email: string; phone?: string; role: UserRole;
   locations: { id: number; name: string }[]; pendingFirstSignIn: boolean; you: boolean; canManage: boolean;
+  /** Only owners and admins remove people; only owners remove other owners. */
+  canRemove: boolean;
 }
 
 export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[]; invitations: SentInvitation[] }

@@ -162,10 +162,14 @@ export default function TeamPage() {
                     <DropdownMenuContent align="end" className="w-52">
                       <DropdownMenuItem onClick={() => setEditing(m)}><Pencil className="mr-2 h-4 w-4" /> Role & locations</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => resetPassword(m)}><KeyRound className="mr-2 h-4 w-4" /> Reset password</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => remove(m)} className="text-red-600 focus:bg-red-50 focus:text-red-600">
-                        <UserMinus className="mr-2 h-4 w-4" /> Remove from company
-                      </DropdownMenuItem>
+                      {m.canRemove && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => remove(m)} className="text-red-600 focus:bg-red-50 focus:text-red-600">
+                            <UserMinus className="mr-2 h-4 w-4" /> Remove from company
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
