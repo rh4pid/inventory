@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PayrollPage() {
+  const [view, setView] = useViewMode("payroll");
   const router = useRouter();
   const { activeBusiness } = useBusiness();
   const bizId = activeBusiness?.businessId ?? 0;
@@ -74,7 +76,7 @@ export default function PayrollPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Payroll & HR"
         description="Manage employees and salary records"
         action={
@@ -115,7 +117,7 @@ export default function PayrollPage() {
             action={<Button onClick={() => router.push("/payroll/new")}><Plus className="h-4 w-4 mr-2" />Add Employee</Button>}
           />
         ) : (
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -172,7 +174,7 @@ export default function PayrollPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
         )}
       </div>
 

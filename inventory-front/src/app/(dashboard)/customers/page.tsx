@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -31,6 +32,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function CustomersPage() {
+  const [view, setView] = useViewMode("customers");
   const canDelete = useCan()("DELETE_CUSTOMERS");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Customer[]>([]);
@@ -85,7 +87,7 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Customers"
         description={`${total} customers`}
         action={
@@ -101,7 +103,7 @@ export default function CustomersPage() {
           action={<Button onClick={() => setOpen(true)}>Add Customer</Button>} />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -127,7 +129,7 @@ export default function CustomersPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
 
           {total > SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">

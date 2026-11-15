@@ -1,5 +1,5 @@
 import type {
-  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, ImportKind, ImportResult, User, BusinessMembership,
+  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, ImportKind, ImportResult, TemplateInfo, User, BusinessMembership,
   Product, ProductPayload, Category, CategoryPayload,
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
@@ -106,6 +106,8 @@ export const users = {
 
 // ── Spreadsheet uploads (all or nothing) ─────────────────────────────────────
 export const imports = {
+  /** The upload types you may use here, with their columns (for the templates page). */
+  catalog: (businessId: number) => req<TemplateInfo[]>(`/businesses/${businessId}/imports`),
   template: (businessId: number, kind: ImportKind) =>
     download(`/businesses/${businessId}/imports/${kind}/template`, `${kind}-template.xlsx`),
   /** check=true only checks the file; otherwise it's saved if every row is fine. */

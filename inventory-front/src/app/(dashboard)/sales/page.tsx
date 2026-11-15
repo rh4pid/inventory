@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -16,6 +17,7 @@ import { InvoiceDialog } from "@/components/shared/InvoiceDialog";
 import type { Invoice } from "@/Types";
 
 export default function SalesPage() {
+  const [view, setView] = useViewMode("sales");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Invoice[]>([]);
   const [opened, setOpened] = useState<Invoice | null>(null);
@@ -42,7 +44,7 @@ export default function SalesPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Sales"
         description={`${total} transactions`}
         action={
@@ -60,7 +62,7 @@ export default function SalesPage() {
         />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Invoice #</TableHead>
@@ -95,7 +97,7 @@ export default function SalesPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
 
           {total > SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">

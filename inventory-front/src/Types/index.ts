@@ -24,7 +24,13 @@ export interface SignUpPayload {
 export interface UsernameCheck { username: string; available: boolean; reason?: string | null; }
 /** What anyone may see about a person found by username. */
 // ── Spreadsheet uploads ──────────────────────────────────────────────────────
-export type ImportKind = "products" | "locations" | "people" | "customers" | "suppliers" | "accounts" | "employees";
+export type ImportKind = "products" | "categories" | "locations" | "people" | "customers" | "suppliers" | "accounts" | "employees";
+
+/** One column of an upload template. */
+export interface TemplateColumn { key: string; header: string; required: boolean; help: string; example: string; options: string[]; }
+
+/** An upload type you may use, as shown on the templates page. */
+export interface TemplateInfo { kind: ImportKind; label: string; description: string; columns: TemplateColumn[]; notes: string[]; }
 
 /** What an upload did, or why it didn't (all or nothing: with errors, nothing was saved). */
 export interface ImportResult {

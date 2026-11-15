@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -21,6 +22,7 @@ const STATUS_VARIANT: Record<StockRequestStatus, "warning" | "success" | "destru
 };
 
 export default function ApprovalsPage() {
+  const [view, setView] = useViewMode("approvals");
   const { activeBusiness } = useBusiness();
   const { user } = useAuth();
   const [list, setList] = useState<StockRequest[] | null>(null);
@@ -67,7 +69,7 @@ export default function ApprovalsPage() {
       <Link href="/inventory" className="mb-3 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
         <ArrowLeft className="h-4 w-4" /> Inventory
       </Link>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Stock approvals"
         description={isManager
           ? "Write-offs and adjustments by cashiers and staff wait here until you approve them."
@@ -88,7 +90,7 @@ export default function ApprovalsPage() {
           description={filter === "PENDING" ? "All stock changes have been reviewed." : "No requests with this status."} />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Requested</TableHead>
@@ -153,7 +155,7 @@ export default function ApprovalsPage() {
                 );
               })}
             </TableBody>
-          </Table>
+          </Table></DataView>
         </div>
       )}
     </div>

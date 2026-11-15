@@ -272,4 +272,65 @@ class ImportsTest {
         assertThat(r.getErrors()).extracting(ImportResult.RowError::row).containsExactly(2, 3);
         verify(journals, never()).post(any(), anyList(), any());
     }
+
+    // ── Categories ───────────────────────────────────────────────────────────
+
+    private static com.ultimate.inventory.Model.Category category(Business b, long id, String name) {
+        com.ultimate.inventory.Model.Category c = new com.ultimate.inventory.Model.Category();
+        c.setId(id);
+        c.setBusiness(b);
+        c.setCategoryName(name);
+        c.setDeleted(false);
+        return c;
+    }
+
+    @Test
+    void categoriesNeedAKnownParent() throws Exception {
+        Business b = company();
+        BusinessAccessHelper access = mock(BusinessAccessHelper.class);
+        when(access.requireBusiness(7L)).thenReturn(b);
+        com.ultimate.inventory.Repository.CategoryRepository repo = mock(com.ultimate.inventory.Repository.CategoryRepository.class);
+        when(repo.findByBusinessAndDeletedFalse(b)).thenReturn(List.of(category(b, 1L, "Drinks")));
+        com.ultimate.inventory.Service.CategoryService categories = mock(com.ultimate.inventory.Service.CategoryService.class);
+        ImportService service = new ImportService(List.of(new CategoryImporter(access, repo, categories)));
+
+        ImportResult r = service.run(7L, ImportKind.CATEGORIES, xlsx(
+                new Object[]{"Category name", "Parent category"},
+                new Object[]{"drinks", null},             // already exists
+                new Object[]{"Ice cream", "Frozen"},      // unknown parent
+                new Object[]{"Juice", "Juice"}),          // inside itself
+                false, "me@x.com");
+
+        assertThat(r.isSaved()).isFalse();
+        assertThat(r.getErrors()).extracting(ImportResult.RowError::row).containsExactly(2, 3, 4);
+        verify(categories, never()).createCategory(any(), any(), any());
+    }
+
+    @Test
+    void categoriesCanUseAParentFromAnEarlierRow() throws Exception {
+        Business b = company();
+        BusinessAccessHelper access = mock(BusinessAccessHelper.class);
+        when(access.requireBusiness(7L)).thenReturn(b);
+        com.ultimate.inventory.Repository.CategoryRepository repo = mock(com.ultimate.inventory.Repository.CategoryRepository.class);
+        when(repo.findByBusinessAndDeletedFalse(b)).thenReturn(List.of(category(b, 1L, "Drinks")));
+        com.ultimate.inventory.Service.CategoryService categories = mock(com.ultimate.inventory.Service.CategoryService.class);
+        when(categories.createCategory(eq(7L), any(), any())).thenAnswer(inv -> {
+            com.ultimate.inventory.DTO.CategoryDTO d = inv.getArgument(1);
+            return category(b, d.getCategoryName().equals("Frozen") ? 50L : 51L, d.getCategoryName());
+        });
+        ImportService service = new ImportService(List.of(new CategoryImporter(access, repo, categories)));
+
+        ImportResult r = service.run(7L, ImportKind.CATEGORIES, xlsx(
+                new Object[]{"Category name", "Parent category"},
+                new Object[]{"Frozen", null},
+                new Object[]{"Ice cream", "frozen"},      // parent from the row above
+                new Object[]{"Juice", "Drinks"}),         // existing parent
+                false, "me@x.com");
+
+        assertThat(r.isSaved()).isTrue();
+        assertThat(r.getCreated()).isEqualTo(3);
+        ArgumentCaptor<com.ultimate.inventory.DTO.CategoryDTO> dto = ArgumentCaptor.forClass(com.ultimate.inventory.DTO.CategoryDTO.class);
+        verify(categories, times(3)).createCategory(eq(7L), dto.capture(), eq("me@x.com"));
+        assertThat(dto.getAllValues()).extracting(com.ultimate.inventory.DTO.CategoryDTO::getParentId).containsExactly(null, 50L, 1L);
+    }
 }

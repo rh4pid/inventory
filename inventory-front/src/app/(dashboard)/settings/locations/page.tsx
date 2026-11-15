@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
 import { errorMessage } from "@/lib/utils";
 import { confirmAction } from "@/context/ConfirmProvider";
@@ -24,6 +25,7 @@ import { useCan } from "@/lib/access";
 const MANAGER_ROLES = ["OWNER", "ADMIN", "MANAGER"];
 
 export default function LocationsSettingsPage() {
+  const [view, setView] = useViewMode("locations");
   const { activeBusiness } = useBusiness();
   const [list, setList] = useState<Shop[] | null>(null);
   const [editing, setEditing] = useState<Shop | "new" | null>(null);
@@ -81,7 +83,7 @@ export default function LocationsSettingsPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Locations"
         description="Every place you hold stock: shops, warehouses, storerooms, vans…"
         action={canEdit && (
@@ -96,7 +98,7 @@ export default function LocationsSettingsPage() {
         <EmptyState title="No locations yet" description="Add your first shop or warehouse to start tracking stock." />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -131,7 +133,7 @@ export default function LocationsSettingsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
         </div>
       )}
 

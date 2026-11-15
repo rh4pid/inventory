@@ -24,9 +24,15 @@ export function useCan() {
   }, [caps]);
 }
 
+/** Anyone who can upload at least one kind of spreadsheet (see the backend importers). */
+export const UPLOAD_CAPS: Capability[] = [
+  "MANAGE_CATALOG", "MANAGE_SUPPLIERS", "MANAGE_PAYROLL", "MANAGE_CUSTOMERS", "MANAGE_LOCATIONS", "MANAGE_TEAM", "MANAGE_ACCOUNTS",
+];
+
 /** Pages and what they need (longest prefix wins). Pages not listed are open to every member. */
 export const PAGE_RULES: { prefix: string; need: Capability | Capability[] }[] = [
   { prefix: "/pos", need: "SELL" },
+  { prefix: "/templates", need: UPLOAD_CAPS },
   { prefix: "/sales", need: "SELL" },
   { prefix: "/purchases", need: "RECEIVE" },
   { prefix: "/customers", need: "MANAGE_CUSTOMERS" },

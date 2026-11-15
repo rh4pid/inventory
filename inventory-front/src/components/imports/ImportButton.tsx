@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { imports, saveBlob } from "@/lib/api";
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import type { ImportKind, ImportResult } from "@/Types";
 
 const LABEL: Record<ImportKind, string> = {
-  products: "products", locations: "locations", people: "team members", customers: "customers",
+  products: "products", categories: "categories", locations: "locations", people: "team members", customers: "customers",
   suppliers: "suppliers", accounts: "accounts", employees: "payroll employees",
 };
 
@@ -123,7 +124,9 @@ export function ImportButton({ kind, onDone, label }: { kind: ImportKind; onDone
             <div className="space-y-4">
               <ol className="space-y-3 text-sm">
                 <li className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-2 px-4 py-3">
-                  <span><b>1.</b> Download the template and fill it in (the Instructions sheet explains each column).</span>
+                  <span><b>1.</b> Download the template and fill it in (the Instructions sheet explains each column).{" "}
+                    <Link href={`/templates?kind=${kind}`} className="font-medium text-brand-deep hover:underline" onClick={close}>Preview it first</Link>
+                  </span>
                   <Button size="sm" variant="outline" onClick={template} disabled={busy === "template"}>
                     {busy === "template" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />} Template
                   </Button>

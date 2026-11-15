@@ -1,5 +1,7 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
+import { ProductThumb } from "@/components/products/ProductImage";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
@@ -19,6 +21,7 @@ import { formatCurrency, errorMessage } from "@/lib/utils";
 import type { Product } from "@/Types";
 
 export default function ProductsPage() {
+  const [view, setView] = useViewMode("products");
   const can = useCan();
   const canEdit = can("MANAGE_CATALOG");
   const seeCosts = can("VIEW_COSTS");
@@ -75,7 +78,7 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Products"
         description={`${total} items in catalog`}
         action={canEdit && (
@@ -108,7 +111,7 @@ export default function ProductsPage() {
         />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -124,11 +127,15 @@ export default function ProductsPage() {
               {items.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{p.productName}</p>
-                      {p.description && (
-                        <p className="text-xs text-gray-400 truncate max-w-xs">{p.description}</p>
-                      )}
+                    <div className={view === "grid" ? "" : "flex items-center gap-3"}>
+                      <ProductThumb name={p.productName} image={p.image}
+                        className={view === "grid" ? "grid-photo" : "h-10 w-10 shrink-0"} />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm">{p.productName}</p>
+                        {p.description && (
+                          <p className="text-xs text-gray-400 truncate max-w-xs">{p.description}</p>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs text-gray-500">{p.sku ?? "—"}</TableCell>
@@ -165,7 +172,7 @@ export default function ProductsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
 
           {/* Pagination */}
           {total > SIZE && (

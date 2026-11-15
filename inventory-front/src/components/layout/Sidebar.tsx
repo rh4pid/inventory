@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import {
   Home, ScanLine, Package, Tag, Warehouse, ShoppingBag, Truck, Users, Building2,
-  Wallet, Settings, LogOut, X, Receipt, Landmark,
+  Wallet, FileSpreadsheet, Settings, LogOut, X, Receipt, Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
@@ -16,7 +16,7 @@ import {
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { LogoMark } from "./Logo";
-import { useCan, type Capability } from "@/lib/access";
+import { useCan, UPLOAD_CAPS, type Capability } from "@/lib/access";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -34,6 +34,7 @@ export const NAV: { label: string; href: string; icon: Icon; need?: Capability |
   { label: "Expenses",   href: "/expenses",   icon: Receipt, need: ["RECORD_EXPENSES", "APPROVE"] },
   { label: "Accounts",   href: "/accounting", icon: Landmark, need: "MANAGE_ACCOUNTS" },
   { label: "Payroll",    href: "/payroll",    icon: Wallet, need: "MANAGE_PAYROLL" },
+  { label: "Templates",  href: "/templates",  icon: FileSpreadsheet, need: UPLOAD_CAPS },
 ];
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");

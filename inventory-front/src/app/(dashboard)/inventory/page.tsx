@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -25,6 +26,7 @@ import type { Inventory, Supplier, Shop, StockBatch, StockMovement } from "@/Typ
 type View = "stock" | "batches" | "history";
 
 export default function InventoryPage() {
+  const [layout, setLayout] = useViewMode("inventory");
   const can = useCan();
   const { activeBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
@@ -123,7 +125,7 @@ export default function InventoryPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={layout} onChange={setLayout} />}
         title="Inventory"
         description="Track stock levels and every movement across your locations"
         action={
@@ -209,7 +211,7 @@ export default function InventoryPage() {
             <EmptyState title="No stock here yet" description="Use Stock In or Transfer to add products to this location." />
           ) : (
             <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
-              <Table>
+              <DataView mode={layout}><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
@@ -250,7 +252,7 @@ export default function InventoryPage() {
                     );
                   })}
                 </TableBody>
-              </Table>
+              </Table></DataView>
             </div>
           ))}
 
@@ -258,7 +260,7 @@ export default function InventoryPage() {
             <EmptyState title="No batches here" description="Batches are created when stock is received at this location." />
           ) : (
             <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
-              <Table>
+              <DataView mode={layout}><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
@@ -302,7 +304,7 @@ export default function InventoryPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></DataView>
             </div>
           ))}
 
@@ -310,7 +312,7 @@ export default function InventoryPage() {
             <EmptyState title="No movements yet" description="Every stock in, sale, transfer and adjustment will appear here." />
           ) : (
             <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
-              <Table>
+              <DataView mode={layout}><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>When</TableHead>
@@ -349,7 +351,7 @@ export default function InventoryPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></DataView>
             </div>
           ))}
         </>

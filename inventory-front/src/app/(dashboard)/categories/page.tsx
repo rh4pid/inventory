@@ -1,4 +1,5 @@
 "use client";
+import { ImportButton } from "@/components/imports/ImportButton";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -86,7 +87,12 @@ export default function CategoriesPage() {
       <PageHeader
         title="Categories"
         description={`${cats.length} categories`}
-        action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Category</Button>}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <ImportButton kind="categories" onDone={load} />
+            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Category</Button>
+          </div>
+        }
       />
 
       {cats.length === 0 ? (

@@ -35,6 +35,25 @@ public class ImportService {
         return i;
     }
 
+    /** One upload type, for the templates page: what it's for and what its template looks like. */
+    public record TemplateInfo(String kind, String label, String description, List<ImportColumn> columns, List<String> notes) {}
+
+    /** The upload types this person may use in this company (in the order of ImportKind). */
+    public List<TemplateInfo> catalog(Long businessId, String email) {
+        List<TemplateInfo> list = new java.util.ArrayList<>();
+        for (ImportKind kind : ImportKind.values()) {
+            Importer imp = importers.get(kind);
+            if (imp == null) continue;
+            try {
+                imp.authorize(businessId, email);
+            } catch (AppException notAllowed) {
+                continue;
+            }
+            list.add(new TemplateInfo(kind.slug, kind.label, kind.description, imp.columns(), imp.notes()));
+        }
+        return list;
+    }
+
     public byte[] template(Long businessId, ImportKind kind, String email) {
         Importer imp = importer(kind);
         imp.authorize(businessId, email);

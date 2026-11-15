@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
@@ -30,6 +31,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function SuppliersPage() {
+  const [view, setView] = useViewMode("suppliers");
   const { activeBusiness } = useBusiness();
   const [items, setItems] = useState<Supplier[]>([]);
   const [total, setTotal] = useState(0);
@@ -83,7 +85,7 @@ export default function SuppliersPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Suppliers"
         description={`${total} suppliers`}
         action={
@@ -99,7 +101,7 @@ export default function SuppliersPage() {
           action={<Button onClick={() => setOpen(true)}>Add Supplier</Button>} />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
@@ -125,7 +127,7 @@ export default function SuppliersPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
 
           {total > SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">

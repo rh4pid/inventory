@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { errorMessage } from "@/lib/utils";
 import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import type { Unit } from "@/Types";
 import { useCan } from "@/lib/access";
 
 export default function UnitsSettingsPage() {
+  const [view, setView] = useViewMode("units");
   const { activeBusiness } = useBusiness();
   const [list, setList] = useState<Unit[] | null>(null);
   const [editing, setEditing] = useState<Unit | "new" | null>(null);
@@ -66,14 +68,14 @@ export default function UnitsSettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Units of measure"
         description="The units products are counted in. Pack sizes (e.g. 1 Carton = 24 Pieces) are set on each product."
         action={canEdit && <Button size="sm" onClick={() => open("new")}><Plus className="h-4 w-4" /> Add unit</Button>}
       />
 
       <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-hidden">
-        <Table>
+        <DataView mode={view}><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -101,7 +103,7 @@ export default function UnitsSettingsPage() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </Table></DataView>
       </div>
 
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>

@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Check, X, Ban, Undo2, ArrowLeftRight } from "lucide-react";
@@ -33,6 +34,7 @@ type Filter = ExpenseStatus | "ALL";
 type NoteAction = { kind: "reject" | "void"; expense: Expense };
 
 export default function ExpensesPage() {
+  const [view, setView] = useViewMode("expenses");
   const { activeBusiness } = useBusiness();
   const businessId = activeBusiness?.businessId;
   const can = useCan();
@@ -81,7 +83,7 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <PageHeader title="Expenses"
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />} title="Expenses"
         description={options?.needsApproval
           ? "Money spent from petty cash for the branch. A manager approves each one."
           : "Running costs paid from petty cash or another account. Approved expenses go straight to the books."}
@@ -114,7 +116,7 @@ export default function ExpensesPage() {
       ) : (
         <div className="overflow-hidden rounded-3xl border border-line/80 bg-surface shadow-card">
           <div className="overflow-x-auto">
-            <Table>
+            <DataView mode={view}><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -175,7 +177,7 @@ export default function ExpensesPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></DataView>
           </div>
           {data.totalElements > SIZE && (
             <div className="flex items-center justify-between border-t border-line px-4 py-3">

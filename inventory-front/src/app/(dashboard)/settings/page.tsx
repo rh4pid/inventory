@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, User, Palette, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound, ArrowLeftRight } from "lucide-react";
-import { useCan, type Capability } from "@/lib/access";
+import { FileSpreadsheet, BookOpen, User, Palette, Building2, SlidersHorizontal, MapPin, Ruler, UsersRound, ArrowLeftRight } from "lucide-react";
+import { useCan, UPLOAD_CAPS, type Capability } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
 import { useAuth } from "@/context/AuthProvider";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
-const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; need?: Capability }[] = [
+const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; need?: Capability | Capability[] }[] = [
   {
     icon: UsersRound,
     title: "Team",
@@ -61,6 +61,13 @@ const SECTIONS: { icon: React.ComponentType<{ className?: string }>; title: stri
     title: "My companies",
     description: "Switch between the companies you work in, or start your own",
     href: "/settings/companies",
+  },
+  {
+    icon: FileSpreadsheet,
+    title: "Upload templates",
+    description: "Preview and download spreadsheet templates, then upload in bulk",
+    href: "/templates",
+    need: UPLOAD_CAPS,
   },
   {
     icon: Palette,

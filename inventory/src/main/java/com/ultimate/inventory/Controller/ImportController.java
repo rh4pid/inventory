@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** Spreadsheet uploads: download a template, check a filled-in file, then save it (all or nothing). */
 @RestController
-@RequestMapping("/businesses/{businessId}/imports/{kind}")
+@RequestMapping("/businesses/{businessId}/imports")
 public class ImportController {
 
     private static final MediaType XLSX =
@@ -24,7 +24,13 @@ public class ImportController {
         this.importService = importService;
     }
 
-    @GetMapping("/template")
+    /** Every upload type you may use, with its columns, for the templates page. */
+    @GetMapping
+    public ResponseEntity<?> catalog(@PathVariable Long businessId, @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(importService.catalog(businessId, email));
+    }
+
+    @GetMapping("/{kind}/template")
     public ResponseEntity<byte[]> template(@PathVariable Long businessId, @PathVariable String kind,
                                            @AuthenticationPrincipal String email) {
         ImportKind k = ImportKind.fromSlug(kind);
@@ -37,7 +43,7 @@ public class ImportController {
     }
 
     /** {@code check=true} only checks the file; otherwise it's saved if every row is fine. */
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{kind}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> upload(@PathVariable Long businessId, @PathVariable String kind,
                                     @RequestPart("file") MultipartFile file,
                                     @RequestParam(defaultValue = "false") boolean check,

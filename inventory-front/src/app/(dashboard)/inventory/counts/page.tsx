@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { errorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ import type { Shop, StockCount } from "@/Types";
 
 
 export default function StockCountsPage() {
+  const [view, setView] = useViewMode("stock-counts");
   const router = useRouter();
   const { activeBusiness } = useBusiness();
   const [list, setList] = useState<StockCount[] | null>(null);
@@ -64,7 +66,7 @@ export default function StockCountsPage() {
       <Link href="/inventory" className="mb-3 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
         <ArrowLeft className="h-4 w-4" /> Inventory
       </Link>
-      <PageHeader
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />}
         title="Stock counts"
         description="Count what is physically on the shelves and correct the system in one go."
         action={<Button onClick={() => setStarting(true)} disabled={shops.length === 0}>
@@ -76,7 +78,7 @@ export default function StockCountsPage() {
         <EmptyState title="No counts yet" description="Start a count for a location to check stock against the system." />
       ) : (
         <div className="rounded-3xl border border-line/80 bg-surface shadow-card overflow-x-auto">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Reference</TableHead>
@@ -103,7 +105,7 @@ export default function StockCountsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
         </div>
       )}
 

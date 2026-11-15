@@ -1,4 +1,5 @@
 "use client";
+import { DataView, ViewToggle, useViewMode } from "@/components/shared/DataView";
 import { ImportButton } from "@/components/imports/ImportButton";
 import Link from "next/link";
 import { errorMessage } from "@/lib/utils";
@@ -32,6 +33,7 @@ const typeOf = (t: AccountType) => TYPES.find((x) => x.value === t) ?? TYPES[0];
 const isSystem = (a: Account) => !!a.accountPurpose && a.accountPurpose !== "EXPENSE" && a.accountPurpose !== "OTHER";
 
 export default function AccountsPage() {
+  const [view, setView] = useViewMode("accounts");
   const { activeBusiness } = useBusiness();
   const businessId = activeBusiness?.businessId;
   const [items, setItems] = useState<Account[] | null>(null);
@@ -61,7 +63,7 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <PageHeader title="Chart of accounts" description="Every account the books use. Sales, purchases, expenses and stock post to these automatically."
+      <PageHeader view={<ViewToggle mode={view} onChange={setView} />} title="Chart of accounts" description="Every account the books use. Sales, purchases, expenses and stock post to these automatically."
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={setupDefaults} disabled={setting}>
@@ -75,7 +77,7 @@ export default function AccountsPage() {
 
       <div className="overflow-hidden rounded-3xl border border-line/80 bg-surface shadow-card">
         <div className="overflow-x-auto">
-          <Table>
+          <DataView mode={view}><Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-24">Code</TableHead>
@@ -101,7 +103,7 @@ export default function AccountsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></DataView>
         </div>
       </div>
 
