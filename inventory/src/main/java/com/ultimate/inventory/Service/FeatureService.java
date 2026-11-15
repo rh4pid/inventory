@@ -97,17 +97,17 @@ public class FeatureService {
         return featureRepo.save(f);
     }
 
-    /** Removes the feature and every product's value for it. */
+    /**
+     * Removes the feature and every product's value for it. Deleted for real (nothing else points at
+     * a feature), so the name is free to use again.
+     */
     @Transactional
     public void delete(Long businessId, Long featureId, String email) {
         requireCatalog(businessId, email);
         Business business = accessHelper.requireBusiness(businessId);
         Feature f = requireFeature(business, featureId);
         productFeatureRepo.deleteByFeature(f);
-        f.setDeleted(true);
-        f.setUpdatedBy(email);
-        f.setUpdatedAt(new Date());
-        featureRepo.save(f);
+        featureRepo.delete(f);
         log.info("Feature {} deleted in business {} by {}", featureId, businessId, email);
     }
 
