@@ -67,6 +67,7 @@ public class TestCompanySeeder implements CommandLineRunner {
     private final SaleService saleService;
     private final EmployeeService employeeService;
     private final BusinessAccessHelper accessHelper;
+    private final AccountingService accountingService;
     private final TransactionTemplate tx;
 
     public TestCompanySeeder(UserRepository userRepo, BusinessUserRepo businessUserRepo, InventoryRepository inventoryRepo,
@@ -76,7 +77,7 @@ public class TestCompanySeeder implements CommandLineRunner {
                              PurchaseService purchaseService, PaymentService paymentService,
                              InventoryService inventoryService, SaleService saleService,
                              EmployeeService employeeService, BusinessAccessHelper accessHelper,
-                             PlatformTransactionManager txManager) {
+                             AccountingService accountingService, PlatformTransactionManager txManager) {
         this.userRepo = userRepo;
         this.businessUserRepo = businessUserRepo;
         this.inventoryRepo = inventoryRepo;
@@ -95,6 +96,7 @@ public class TestCompanySeeder implements CommandLineRunner {
         this.saleService = saleService;
         this.employeeService = employeeService;
         this.accessHelper = accessHelper;
+        this.accountingService = accountingService;
         this.tx = new TransactionTemplate(txManager);
     }
 
@@ -383,6 +385,11 @@ public class TestCompanySeeder implements CommandLineRunner {
 
         LocalDate today = LocalDate.now();
 
+        // The owner's starting money, so the tills and bank never go below zero when stock is bought.
+        capital(bid, admin, PaymentMethod.BANK_TRANSFER, "30000", "Opening bank balance", today);
+        capital(bid, admin, PaymentMethod.MOBILE_MONEY, "10000", "Opening mobile money float", today);
+        capital(bid, admin, PaymentMethod.CASH, "3000", "Opening cash float", today);
+
         // Opening purchases into the warehouse, with batch numbers and expiry dates.
         Invoice tema = purchase(bid, warehouseManager, warehouse.getId(), temaFoods, PaymentMethod.CREDIT, "Opening stock from Tema Foods (on credit)",
                 line(products, "RIC-5KG", 60, 95, "TF-RIC5-2611", today.plusMonths(14)),
@@ -515,6 +522,10 @@ public class TestCompanySeeder implements CommandLineRunner {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private void capital(Long bid, String by, PaymentMethod method, String amount, String note, LocalDate date) {
+        accountingService.recordCapital(bid, new AccountingService.OwnerMoney(new BigDecimal(amount), null, method, date, note), by);
+    }
 
     private void setPassword(Person p) {
         User u = userRepo.findByEmail(p.email());

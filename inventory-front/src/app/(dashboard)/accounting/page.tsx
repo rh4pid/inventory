@@ -68,6 +68,24 @@ export default function AccountingPage() {
           <Button size="sm" variant="outline" onClick={catchUp} disabled={catching}>{catching ? "Posting…" : "Post them now"}</Button>
         </div>
       )}
+      {(() => {
+        // A till or bank can't hold less than nothing: below zero means money went out that was
+        // never recorded coming in (usually the owner's starting money, or sales recorded elsewhere).
+        const below = data.money.filter((m) => m.balance < -0.005);
+        if (below.length === 0) return null;
+        return (
+          <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-bad/20 bg-bad-soft px-4 py-3 text-sm text-bad">
+            <span className="flex min-w-0 items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <b>{below.map((m) => m.account.name).join(", ")} {below.length === 1 ? "is" : "are"} below zero.</b>{" "}
+                More was paid out than the books show coming in. Record the money the business started with
+                (Capital in), or check for sales or deposits that weren&apos;t recorded.
+              </span>
+            </span>
+            <Button size="sm" variant="outline" onClick={() => setMove("capital")}><ArrowDownToLine className="h-4 w-4" /> Capital in</Button>
+          </div>
+        );
+      })()}
       {data.pendingExpenses > 0 && (
         <Link href="/expenses" className="mb-4 flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink-2 shadow-card hover:bg-surface-2">
           <Receipt className="h-4 w-4 text-accent-deep" /> {data.pendingExpenses} expense{data.pendingExpenses === 1 ? "" : "s"} waiting for approval →

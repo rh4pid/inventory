@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/brand";
 
 /** Three stacked cubes, the product mark. Coloured with the company theme's accent. */
 export function LogoMark({ className }: { className?: string }) {
@@ -22,5 +23,5 @@ export function LogoMark({ className }: { className?: string }) {
 }
 
 export function Wordmark({ className }: { className?: string }) {
-  return <span className={cn("text-[26px] font-semibold tracking-tight text-ink", className)}>Inventory</span>;
+  return <span className={cn("text-[26px] font-semibold tracking-tight text-ink", className)}>{APP_NAME}</span>;
 }

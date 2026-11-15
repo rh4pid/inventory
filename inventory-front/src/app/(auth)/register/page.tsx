@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { errorMessage } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
-import { LogoMark } from "@/components/layout/Logo";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { UsernameField, cleanUsername, usernameProblem, type UsernameStatus } from "@/components/account/UsernameField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,16 +70,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-2 px-6 pt-6 md:px-10 md:pt-8">
-        <LogoMark className="h-8 w-8" />
-        <span className="text-xl font-semibold tracking-tight text-ink">Inventory</span>
-      </header>
-
-      <main className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md space-y-6 rounded-4xl border border-white/70 bg-frame p-8 shadow-float">
-          <div className="space-y-1 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-ink">Create your account</h1>
+    <AuthShell>
+        <div className="space-y-6">
+          <div className="space-y-1.5">
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink">Create your account</h1>
             <p className="text-sm text-ink-3">One account for every company you work with</p>
           </div>
 
@@ -140,10 +134,9 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-ink-3">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-brand-deep hover:underline">Sign in</Link>
+            <Link href="/login" className="font-semibold text-brand-deep hover:underline">Sign in</Link>
           </p>
         </div>
-      </main>
-    </div>
+    </AuthShell>
   );
 }
