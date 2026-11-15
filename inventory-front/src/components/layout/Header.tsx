@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bell, CalendarDays, ChevronDown, LayoutPanelLeft, MapPin, Menu, Search, Check, Package, CornerDownLeft,
+  Bell, CalendarDays, ChevronDown, MapPin, Menu, Search, Check, Package, CornerDownLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBusiness } from "@/context/BusinessContext";
@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { locationTypeLabel } from "@/constants/Inventory";
 import { Wordmark, LogoMark } from "./Logo";
 import { NAV } from "./Sidebar";
-import { useCan, ROLE_LABEL } from "@/lib/access";
+import { useCan } from "@/lib/access";
 
 const iconBtn =
   "relative flex h-11 w-11 items-center justify-center rounded-2xl border border-line bg-surface text-ink-2 " +
@@ -130,7 +130,6 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
           <Search className="h-5 w-5" />
         </button>
         <Notifications />
-        <BusinessSwitcher />
       </div>
 
       <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -144,6 +143,8 @@ function Notifications() {
   const { settings } = useBusinessSettings();
   const bizId = activeBusiness?.businessId;
   const isManager = useCan()("APPROVE");
+  // Invitations to join another company: shown here, accepted from Settings → My companies.
+  const { invitations } = useMyInvitations();
   const [items, setItems] = useState<{ key: string; title: string; detail: string; href: string; tone: "orange" | "blue" }[]>([]);
 
   const load = useCallback(async () => {
@@ -168,20 +169,26 @@ function Notifications() {
 
   useEffect(() => { load(); }, [load]);
 
+  const invites = invitations.map((inv) => ({
+    key: `inv${inv.id}`, title: `Invitation from ${inv.businessName}`,
+    detail: "Open My companies in Settings to accept or decline", href: "/settings/companies", tone: "blue" as const,
+  }));
+  const all = [...invites, ...items];
+
   return (
     <DropdownMenu onOpenChange={(o) => o && load()}>
       <DropdownMenuTrigger asChild>
-        <button className={iconBtn} aria-label={`Notifications${items.length ? ` (${items.length})` : ""}`}>
+        <button className={iconBtn} aria-label={`Notifications${all.length ? ` (${all.length})` : ""}`}>
           <Bell className="h-5 w-5" />
-          {items.length > 0 && (
+          {all.length > 0 && (
             <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-surface" />
           )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 rounded-2xl p-1.5">
         <DropdownMenuLabel>Needs attention</DropdownMenuLabel>
-        {items.length === 0 && <p className="px-3 py-3 text-sm text-ink-3">All clear. Nothing needs action.</p>}
-        {items.map((n) => (
+        {all.length === 0 && <p className="px-3 py-3 text-sm text-ink-3">All clear. Nothing needs action.</p>}
+        {all.map((n) => (
           <DropdownMenuItem key={n.key} asChild className="rounded-xl">
             <Link href={n.href} className="flex items-start gap-2.5">
               <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.tone === "orange" ? "bg-accent" : "bg-brand")} />
@@ -192,40 +199,6 @@ function Notifications() {
             </Link>
           </DropdownMenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function BusinessSwitcher() {
-  const { businesses, activeBusiness, switchBusiness } = useBusiness();
-  const { invitations } = useMyInvitations();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className={cn(iconBtn, "relative")}
-          aria-label={invitations.length ? `Switch business (${invitations.length} invitation${invitations.length > 1 ? "s" : ""} waiting)` : "Switch business"}>
-          <LayoutPanelLeft className="h-5 w-5" />
-          {invitations.length > 0 && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-frame" aria-hidden="true" />}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 rounded-2xl p-1.5">
-        <DropdownMenuLabel>Business</DropdownMenuLabel>
-        {businesses.map((b) => (
-          <DropdownMenuItem key={b.businessId} onClick={() => switchBusiness(b)} className="rounded-xl">
-            <Check className={cn("mr-2 h-4 w-4", b.businessId === activeBusiness?.businessId ? "text-accent" : "opacity-0")} />
-            <div className="min-w-0">
-              <div className="truncate font-medium text-ink">{b.businessName}</div>
-              <div className="text-xs text-ink-3">{ROLE_LABEL[b.role] ?? b.role}</div>
-            </div>
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="rounded-xl">
-          <Link href="/settings/companies">
-            {invitations.length > 0 ? `${invitations.length} invitation${invitations.length > 1 ? "s" : ""} waiting · My companies` : "My companies · create one"}
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
