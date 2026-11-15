@@ -24,11 +24,11 @@
   --ink: #1c2541;          /* primary text, never black */
   --ink-2: #434b63;        /* secondary text */
   --ink-3: #6e7690;        /* muted text */
-  --canvas: #ece6df;       /* behind the app frame */
-  --frame: #f7f4f0;        /* the app frame */
+  --canvas: #eef1f5;       /* behind the app frame */
+  --frame: #f7f8fa;        /* the app frame */
   --surface: #ffffff;      /* cards */
-  --surface-2: #f1ede8;    /* wells, rail buttons, inputs */
-  --line: #e6e0d8;
+  --surface-2: #f0f2f5;    /* wells, rail buttons, inputs */
+  --line: #e3e7ed;
 
   /* Legacy names still used by a few components */
   --background: var(--frame);
@@ -78,6 +78,17 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-line: var(--line);
+
+  /* Status colours: the same in every theme (green ok, amber warning, red problem, blue info). */
+  --color-ok: #1d6b3b;
+  --color-ok-soft: #dcf0e3;
+  --color-warn: #92400e;
+  --color-warn-soft: #fef3c7;
+  --color-warn-fill: #f59e0b;
+  --color-bad: #b42318;
+  --color-bad-soft: #fde2e1;
+  --color-info: #1e4f9a;
+  --color-info-soft: #e0ecfb;
 }
 
 /* Warm, navy-tinted neutrals instead of Tailwind's gray (whose 900/950 read as black). */
@@ -86,7 +97,7 @@
   --color-gray-50: var(--frame);
   --color-gray-100: var(--surface-2);
   --color-gray-200: var(--line);
-  --color-gray-300: #d4cdc3;
+  --color-gray-300: #cfd5de;
   --color-gray-400: #a2a6b5;
   --color-gray-500: #6e7690;
   --color-gray-600: #565e78;
@@ -175,7 +186,7 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d4cdc3; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb { background: #cfd5de; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #a2a6b5; background-clip: content-box; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -11,7 +11,7 @@ const BAR_MAX = 132; // px, tallest bar
  */
 export function OrdersCard({ orders, periodLabel }: { orders: DashboardData["orders"]; periodLabel: string }) {
   const bars = [
-    { key: "overdue", label: "Overdue", value: orders.overdue, hint: "Credit sales past their due date with money still owed", fill: "bg-accent" },
+    { key: "overdue", label: "Overdue", value: orders.overdue, hint: "Credit sales past their due date with money still owed", fill: "bg-warn-fill" },
     { key: "returns", label: "Returns", value: orders.returns, hint: "Sales with items returned", fill: "fill-zigzag text-white/90 [--pattern-bg:var(--brand-blue)]" },
     { key: "unpaid", label: "Unpaid", value: orders.inProgress, hint: "Sales with a balance still due, not yet overdue", fill: "fill-speckle bg-brand-deep text-white/80" },
     { key: "completed", label: "Completed", value: orders.completed, hint: "Sales fully paid", fill: "fill-fade text-white" },

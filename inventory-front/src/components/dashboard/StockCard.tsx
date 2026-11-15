@@ -4,10 +4,11 @@ import type { DashboardData } from "@/Types";
 import { Panel, PanelHeader, fmtNum } from "./Panel";
 
 const NAVY = "#1c2541"; // ink, same in every theme
-const ORANGE = "var(--brand-orange)"; // theme accent
+const CARD = "var(--brand-blue-soft)"; // the card behind the chart
+const AMBER = "#f59e0b"; // warning, same in every theme
 
 /**
- * The orange Stock card: a legend on the left and a patterned half-donut on the right.
+ * The soft-blue Stock card: a legend on the left and a patterned half-donut on the right.
  * Every product sits in exactly one bucket (out > low > dead > in stock).
  */
 export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
@@ -39,8 +40,8 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
   const focus = segments.find((s) => s.key === hover);
 
   return (
-    <Panel tone="orange" className="flex min-h-[19rem] flex-col">
-      <PanelHeader title="Stock" subtitle={`${fmtNum(stock.products)} products tracked`} href="/inventory" linkLabel="Open inventory" tone="orange" />
+    <Panel tone="soft" className="flex min-h-[19rem] flex-col">
+      <PanelHeader title="Stock" subtitle={`${fmtNum(stock.products)} products tracked`} href="/inventory" linkLabel="Open inventory" tone="soft" />
       <div className="mt-4 flex flex-1 flex-col justify-end gap-4 sm:flex-row sm:items-end sm:justify-between">
         <ul className="min-w-[10.5rem] shrink-0 space-y-2.5 whitespace-nowrap text-[13px]">
           {segments.map((s) => (
@@ -65,7 +66,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
             aria-label={`Stock health: ${segments.map((s) => `${s.label} ${s.value}`).join(", ")}`}>
             <defs>
               <pattern id={`${uid}-stripes`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <rect width="7" height="7" style={{ fill: ORANGE }} />
+                <rect width="7" height="7" style={{ fill: AMBER }} />
                 <rect width="2.6" height="7" fill={NAVY} />
               </pattern>
               <pattern id={`${uid}-dots`} width="6" height="6" patternUnits="userSpaceOnUse">
@@ -81,7 +82,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
                 key={a.key}
                 d={a.d}
                 fill={a.fill}
-                style={{ stroke: ORANGE }}
+                style={{ stroke: CARD }}
                 strokeWidth={0.5}
                 opacity={hover && hover !== a.key ? 0.45 : 1}
                 onMouseEnter={() => setHover(a.key)}
@@ -94,7 +95,7 @@ export function StockCard({ stock }: { stock: DashboardData["stock"] }) {
           </svg>
           <div className="pointer-events-none absolute inset-x-0 bottom-[4%] text-center">
             <div className="text-xl font-semibold leading-none tabular-nums">{fmtNum(focus ? focus.value : total)}</div>
-            <div className="text-[11px] font-medium text-on-accent/75">{focus ? focus.label : "products"}</div>
+            <div className="text-[11px] font-medium text-ink-3">{focus ? focus.label : "products"}</div>
           </div>
         </div>
       </div>

@@ -34,11 +34,11 @@ const INK = "#1c2541";
 
 export const THEMES: Theme[] = [
   {
-    id: "market", name: "Market", tagline: "Bright blue and orange: lively shop floor",
+    id: "market", name: "Market", tagline: "Clear blue on cool grey; orange only for alerts",
     suits: ["GENERAL_RETAIL", "OTHER"],
     vars: { brand: "#3563e9", brandStrong: "#3563e9", brandDeep: "#2447c7", brandSoft: "#e8eefd",
       accent: "#f2622e", accentDeep: "#d9481a", accentSoft: "#fde9e1", onAccent: INK,
-      canvas: "#ece6df", frame: "#f7f4f0", surface2: "#f1ede8", line: "#e6e0d8" },
+      canvas: "#eef1f5", frame: "#f7f8fa", surface2: "#f0f2f5", line: "#e3e7ed" },
   },
   {
     id: "care", name: "Care", tagline: "Clinical teal and soft coral on mint: calm and clean",
@@ -129,13 +129,15 @@ export const THEMES: Theme[] = [
 export const themeById = (id?: string | null) => THEMES.find((t) => t.id === id);
 
 /** The theme for a business type when the admin hasn't picked one. */
-export function defaultThemeFor(businessType?: string | null): Theme {
-  return THEMES.find((t) => businessType && t.suits.includes(businessType)) ?? THEMES[0];
+export function defaultThemeFor(): Theme {
+  // Every company starts on the blue Market theme; admins can pick another in Settings → Appearance
+  // (the themes made for their business type are marked "Recommended" there).
+  return THEMES[0];
 }
 
-/** Chosen theme, or the business type's default ("auto"). */
-export function resolveTheme(themeId?: string | null, businessType?: string | null): Theme {
-  return themeById(themeId) ?? defaultThemeFor(businessType);
+/** The chosen theme, or the default (blue Market) when none is chosen. */
+export function resolveTheme(themeId?: string | null): Theme {
+  return themeById(themeId) ?? defaultThemeFor();
 }
 
 const VAR_NAMES: Record<keyof Theme["vars"], string> = {

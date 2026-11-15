@@ -38,7 +38,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettingsState(s);
     if (!s) return;
     setCurrencySymbol(s.currencySymbol);
-    const theme = resolveTheme(s.theme, s.businessType);
+    const theme = resolveTheme(s.theme);
     applyTheme(theme);
     try { if (businessId) localStorage.setItem(cacheKey(businessId), theme.id); } catch { /* not remembered */ }
   }, [businessId]);

@@ -10,8 +10,8 @@ type Order = DashboardData["recentOrders"][number];
 const STATUS: Record<Order["status"], { label: string; cls: string }> = {
   SOLD: { label: "Sold", cls: "bg-brand-strong text-white" },
   RECEIVED: { label: "Received", cls: "bg-brand-strong text-white" },
-  PART_RETURNED: { label: "Part returned", cls: "bg-accent text-on-accent" },
-  RETURNED: { label: "Returned", cls: "bg-accent text-on-accent" },
+  PART_RETURNED: { label: "Part returned", cls: "bg-warn-soft text-warn" },
+  RETURNED: { label: "Returned", cls: "bg-warn-soft text-warn" },
   VOID: { label: "Void", cls: "border border-line bg-surface text-ink-2" },
 };
 
@@ -109,7 +109,7 @@ export function OrderHistoryCard({ orders, onOpen }: { orders: Order[]; onOpen: 
           {orders.length > 1 && (
             <div className="mt-3 flex justify-center gap-1.5" aria-hidden="true">
               {orders.map((_, k) => (
-                <span key={k} className={cn("h-1.5 rounded-full transition-all", k === i ? "w-5 bg-accent" : "w-1.5 bg-gray-300")} />
+                <span key={k} className={cn("h-1.5 rounded-full transition-all", k === i ? "w-5 bg-brand" : "w-1.5 bg-gray-300")} />
               ))}
             </div>
           )}

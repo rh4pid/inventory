@@ -8,7 +8,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
   return (
     <html lang="en">
       <body style={{ margin: 0, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#ece6df", color: "#1c2541", fontFamily: "system-ui, sans-serif" }}>
+        background: "#eef1f5", color: "#1c2541", fontFamily: "system-ui, sans-serif" }}>
         <title>Something went wrong · Inventory</title>
         <div style={{ maxWidth: 420, margin: 16, padding: 32, borderRadius: 32, background: "#ffffff", textAlign: "center",
           boxShadow: "0 12px 40px -12px rgba(28,37,65,.25)" }}>

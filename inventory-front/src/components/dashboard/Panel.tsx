@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** A dashboard card: big radius, generous padding; `tone` gives the saturated brand cards. */
 export function Panel({ tone = "plain", className, children, ...rest }: {
-  tone?: "plain" | "blue" | "orange";
+  tone?: "plain" | "blue" | "soft";
 } & React.HTMLAttributes<HTMLElement>) {
   return (
     <section
@@ -12,7 +12,7 @@ export function Panel({ tone = "plain", className, children, ...rest }: {
         "relative overflow-hidden rounded-4xl p-5 md:p-6",
         tone === "plain" && "border border-line/80 bg-surface shadow-card",
         tone === "blue" && "bg-brand-strong text-white shadow-[var(--shadow-brand-lg)]",
-        tone === "orange" && "bg-accent text-on-accent shadow-[var(--shadow-accent-lg)]",
+        tone === "soft" && "border border-brand/15 bg-brand-soft text-ink shadow-card",
         className
       )}
       {...rest}
@@ -27,17 +27,17 @@ export function PanelHeader({ title, subtitle, href, linkLabel, tone = "plain", 
   subtitle?: React.ReactNode;
   href?: string;
   linkLabel?: string;
-  tone?: "plain" | "blue" | "orange";
+  tone?: "plain" | "blue" | "soft";
   children?: React.ReactNode;
 }) {
   return (
     <div className="relative z-10 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className={cn("text-xl font-semibold tracking-tight", tone === "plain" ? "text-ink" : tone === "blue" ? "text-white" : "text-on-accent")}>
+        <h2 className={cn("text-xl font-semibold tracking-tight", tone === "blue" ? "text-white" : "text-ink")}>
           {title}
         </h2>
         {subtitle && (
-          <p className={cn("mt-0.5 text-[13px]", tone === "blue" ? "text-white/80" : tone === "orange" ? "text-on-accent/75" : "text-ink-3")}>
+          <p className={cn("mt-0.5 text-[13px]", tone === "blue" ? "text-white/80" : tone === "soft" ? "text-ink-2" : "text-ink-3")}>
             {subtitle}
           </p>
         )}
@@ -51,7 +51,7 @@ export function PanelHeader({ title, subtitle, href, linkLabel, tone = "plain", 
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2",
               tone === "blue" && "bg-white/15 text-white hover:bg-white/25 focus-visible:ring-white",
-              tone === "orange" && "bg-white/25 text-on-accent hover:bg-white/40 focus-visible:ring-on-accent",
+              tone === "soft" && "bg-white/80 text-ink-2 hover:bg-white hover:text-ink focus-visible:ring-brand",
               tone === "plain" && "bg-surface-2 text-ink-2 hover:text-ink focus-visible:ring-brand"
             )}
           >

@@ -77,7 +77,7 @@ export default function AdminConsolePage() {
           <p className="mt-1 text-3xl font-semibold tabular-nums">{companies ? totals.companies : "–"}</p>
           <p className="text-xs text-white/75">{companies ? `${totals.active} active · ${totals.companies - totals.active} suspended` : " "}</p>
         </Panel>
-        <Panel tone="orange" className="p-5 md:p-5">
+        <Panel tone="soft" className="p-5 md:p-5">
           <p className="text-sm text-ink/80">People</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums">{companies ? totals.people : "–"}</p>
           <p className="text-xs text-ink/70">across all companies</p>
@@ -140,7 +140,7 @@ export default function AdminConsolePage() {
                     <div className="truncate text-lg font-semibold text-ink">{c.name}</div>
                     <div className="text-xs text-ink-3"><span className="font-mono">{c.code}</span> · {c.businessTypeLabel ?? "—"}</div>
                   </div>
-                  <span className={cn("shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-on-accent" : "bg-brand-soft text-brand-deep")}>
+                  <span className={cn("shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-bad-soft text-bad" : "bg-ok-soft text-ok")}>
                     {c.suspended ? "Suspended" : "Active"}
                   </span>
                 </div>

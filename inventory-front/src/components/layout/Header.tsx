@@ -69,7 +69,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
               className="flex h-11 w-full items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 text-left text-sm shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               aria-label="Choose location"
             >
-              <MapPin className="h-4 w-4 shrink-0 text-accent" />
+              <MapPin className="h-4 w-4 shrink-0 text-brand" />
               <span className="min-w-0 flex-1 truncate">
                 <span className="font-semibold text-ink">{location ? location.shopName : "All locations"}</span>
                 <span className="text-ink-3">
@@ -84,13 +84,13 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
           <DropdownMenuContent align="center" className="w-[min(26rem,calc(100vw-2rem))] rounded-2xl p-1.5">
             <DropdownMenuLabel>Show figures for</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setLocationId(null)} className="rounded-xl">
-              <Check className={cn("mr-2 h-4 w-4", location ? "opacity-0" : "text-accent")} />
+              <Check className={cn("mr-2 h-4 w-4", location ? "opacity-0" : "text-brand")} />
               All my locations
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {locations.map((s) => (
               <DropdownMenuItem key={s.id} onClick={() => setLocationId(s.id)} className="rounded-xl">
-                <Check className={cn("mr-2 h-4 w-4", location?.id === s.id ? "text-accent" : "opacity-0")} />
+                <Check className={cn("mr-2 h-4 w-4", location?.id === s.id ? "text-brand" : "opacity-0")} />
                 <div className="min-w-0">
                   <div className="font-medium text-ink">{s.shopName}</div>
                   <div className="truncate text-xs text-ink-3">
@@ -119,7 +119,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
           <DropdownMenuContent align="end" className="w-44 rounded-2xl p-1.5">
             {PERIODS.map((p) => (
               <DropdownMenuItem key={p.value} onClick={() => setPeriod(p.value)} className="rounded-xl">
-                <Check className={cn("mr-2 h-4 w-4", period === p.value ? "text-accent" : "opacity-0")} />
+                <Check className={cn("mr-2 h-4 w-4", period === p.value ? "text-brand" : "opacity-0")} />
                 {p.label} <span className="ml-auto text-xs text-ink-3">{p.days}d</span>
               </DropdownMenuItem>
             ))}

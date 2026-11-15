@@ -55,8 +55,8 @@ export default function AppearancePage() {
 
   if (!settings || !activeBusiness) return <PageLoader />;
 
-  const auto = defaultThemeFor(settings.businessType);
-  const current = resolveTheme(settings.theme, settings.businessType);
+  const auto = defaultThemeFor();
+  const current = resolveTheme(settings.theme);
   const isAuto = !settings.theme;
   const typeLabel = TYPE_LABEL[settings.businessType] ?? "your business type";
 
@@ -65,7 +65,7 @@ export default function AppearancePage() {
     try {
       const saved = await settingsApi.update(activeBusiness.businessId, { theme: themeId });
       setSettings(saved);
-      const t = resolveTheme(saved.theme, saved.businessType);
+      const t = resolveTheme(saved.theme);
       toast.success(themeId === "auto" ? `Automatic: ${t.name}` : `${t.name} theme applied`);
     } catch (err) {
       toast.error(errorMessage(err, "Could not change the theme"));

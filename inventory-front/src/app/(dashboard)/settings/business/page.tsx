@@ -70,7 +70,7 @@ export default function BusinessInfoPage() {
     }
   };
 
-  const theme = resolveTheme(settings.theme, settings.businessType);
+  const theme = resolveTheme(settings.theme);
 
   return (
     <div className="max-w-3xl">

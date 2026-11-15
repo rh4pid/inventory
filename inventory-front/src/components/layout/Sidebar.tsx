@@ -50,7 +50,7 @@ function RailLink({ href, label, icon: Icon, active }: { href: string; label: st
         "group relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-frame",
         active
-          ? "bg-gradient-to-br from-accent to-accent-deep text-on-accent shadow-[var(--shadow-accent)]"
+          ? "bg-brand-strong text-white shadow-[var(--shadow-brand)]"
           : "bg-surface-2 text-ink-2 hover:bg-white hover:text-ink hover:shadow-card"
       )}
     >
@@ -80,7 +80,7 @@ function UserMenu({ align = "start" }: { align?: "start" | "end" }) {
         >
           <Avatar className="h-11 w-11 rounded-2xl">
             {user?.profilePicture && <AvatarImage src={user.profilePicture} className="rounded-2xl object-cover" />}
-            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-accent to-accent-deep text-sm font-semibold text-on-accent">
+            <AvatarFallback className="rounded-2xl bg-brand-strong text-sm font-semibold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -158,7 +158,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
                 href={href}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium",
-                  active ? "bg-gradient-to-br from-accent to-accent-deep text-on-accent" : "text-ink-2 hover:bg-surface-2"
+                  active ? "bg-brand-strong text-white" : "text-ink-2 hover:bg-surface-2"
                 )}
               >
                 <Icon className="h-5 w-5" /> {label}

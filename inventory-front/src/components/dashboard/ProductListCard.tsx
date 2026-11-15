@@ -18,7 +18,7 @@ const PAGE = 8;
 const DEMAND: Record<Row["demand"], { label: string; cls: string; hint: string }> = {
   HIGH: { label: "High", cls: "bg-brand-strong text-white", hint: "Among the top 30% of sellers this period" },
   NORMAL: { label: "Normal", cls: "bg-surface-2 text-ink-2", hint: "Sold this period" },
-  LOW: { label: "Low", cls: "bg-accent text-on-accent", hint: "No sales this period" },
+  LOW: { label: "Low", cls: "bg-warn-soft text-warn", hint: "No sales this period" },
 };
 
 const STOCK: Record<Row["stockStatus"], string> = { IN: "In stock", LOW: "Low stock", OUT: "Out of stock", DEAD: "Dead stock" };
@@ -117,7 +117,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
               <Download className="h-4 w-4" />
             </button>
             {can("MANAGE_CATALOG") && <Link href="/products/new" aria-label="Add product" title="Add product"
-              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-on-accent shadow-[var(--shadow-accent)] hover:bg-accent-deep">
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-strong text-white shadow-[var(--shadow-brand)] hover:bg-brand-deep">
               <Plus className="h-5 w-5" />
             </Link>}
           </div>
@@ -154,7 +154,7 @@ export function ProductListCard({ rows, locationName }: { rows: Row[]; locationN
                 <td className="px-4 py-3 text-ink-2">{r.category ?? <span className="text-ink-3">—</span>}</td>
                 {seeCosts && <td className="px-4 py-3 text-right tabular-nums text-ink-2">{formatCurrency(r.cost ?? 0)}</td>}
                 <td className="px-4 py-3 text-right tabular-nums">
-                  <span className={cn("font-medium", r.stockStatus === "OUT" ? "text-accent-deep" : "text-ink")}>{fmtNum(r.onHand)}</span>
+                  <span className={cn("font-medium", r.stockStatus === "OUT" ? "text-bad" : "text-ink")}>{fmtNum(r.onHand)}</span>
                   {r.unit && <span className="ml-1 text-xs text-ink-3">{r.unit}</span>}
                   {(r.stockStatus === "LOW" || r.stockStatus === "OUT" || r.stockStatus === "DEAD") && (
                     <div className="text-[11px] text-ink-3">{STOCK[r.stockStatus]}</div>

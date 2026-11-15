@@ -76,7 +76,7 @@ export function CompanyDialog({ company: initial, onClose, onChanged }: {
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {c.name}
             <span className="font-mono text-xs font-normal text-ink-3">{c.code}</span>
-            <span className={cn("rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-accent text-on-accent" : "bg-brand-soft text-brand-deep")}>
+            <span className={cn("rounded-lg px-2 py-0.5 text-xs font-semibold", c.suspended ? "bg-bad-soft text-bad" : "bg-ok-soft text-ok")}>
               {c.suspended ? "Suspended" : "Active"}
             </span>
           </DialogTitle>

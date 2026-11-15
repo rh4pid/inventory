@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="min-w-0">
             <Wordmark className="text-[22px] md:text-[28px]" />
             <p className="-mt-0.5 flex items-center gap-1 text-xs text-ink-3">
-              <ShieldCheck className="h-3.5 w-3.5 text-accent" /> Admin console
+              <ShieldCheck className="h-3.5 w-3.5 text-brand" /> Admin console
             </p>
           </div>
           <div className="ml-auto">
@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <DropdownMenuTrigger asChild>
                 <button aria-label="Your account" className="flex items-center gap-2.5 rounded-2xl border border-line bg-surface py-1.5 pl-1.5 pr-3 shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   <Avatar className="h-8 w-8 rounded-xl">
-                    <AvatarFallback className="rounded-xl bg-gradient-to-br from-accent to-accent-deep text-xs font-semibold text-on-accent">SA</AvatarFallback>
+                    <AvatarFallback className="rounded-xl bg-brand-strong text-xs font-semibold text-white">SA</AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium text-ink sm:inline">Super admin</span>
                 </button>
