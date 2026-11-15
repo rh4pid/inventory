@@ -1,6 +1,7 @@
 "use client";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { ProductImagePicker } from "@/components/products/ProductImage";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,12 +42,14 @@ export default function NewProductPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [unitList, setUnitList] = useState<Unit[]>([]);
   const [packRows, setPackRows] = useState<PackRow[]>([]);
+  const [picture, setPicture] = useState<Blob | null>(null);
   const { settings } = useBusinessSettings();
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
   });
   const baseUnitId = watch("unitId");
+  const nameNow = watch("productName") ?? "";
 
   useEffect(() => {
     if (!activeBusiness) return;
@@ -75,6 +78,10 @@ export default function NewProductPage() {
       if (packs.length > 0) {
         await unitsApi.setForProduct(activeBusiness.businessId, created.id, packs);
       }
+      if (picture) {
+        try { await productsApi.uploadImage(activeBusiness.businessId, created.id, picture); }
+        catch (err) { toast.error(errorMessage(err, "Product saved, but the picture couldn't be uploaded")); }
+      }
       toast.success("Product created");
       router.push("/products");
     } catch (err) {
@@ -90,6 +97,7 @@ export default function NewProductPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            <ProductImagePicker name={nameNow} onPick={setPicture} />
             <div className="space-y-1.5">
               <Label>Product name *</Label>
               <Input placeholder="e.g. Laptop Pro 15" {...register("productName")} />

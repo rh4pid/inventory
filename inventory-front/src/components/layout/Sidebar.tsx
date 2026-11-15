@@ -139,8 +139,8 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
           <div className="flex items-center gap-2">
             <LogoMark className="h-8 w-8" />
             <div>
-              <div className="text-lg font-semibold text-ink">Inventory</div>
-              {activeBusiness && <div className="text-xs text-ink-3">{activeBusiness.businessName}</div>}
+              <div className="max-w-[12rem] truncate text-lg font-semibold text-ink">{activeBusiness?.businessName ?? "Inventory"}</div>
+              {activeBusiness && <div className="text-xs font-medium uppercase tracking-[0.14em] text-ink-3">Inventory</div>}
             </div>
           </div>
           <button onClick={onClose} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-2 text-ink-2">

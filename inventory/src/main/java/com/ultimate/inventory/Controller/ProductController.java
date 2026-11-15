@@ -19,9 +19,25 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
+    private final com.ultimate.inventory.Service.ProductImageService productImages;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, com.ultimate.inventory.Service.ProductImageService productImages) {
         this.productService = productService;
+        this.productImages = productImages;
+    }
+
+    /** Sets (or replaces) the product's picture. Returns the product with its new image key. */
+    @PostMapping(value = "/{productId}/image", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadImage(@PathVariable Long businessId, @PathVariable Long productId,
+                                         @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                         @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(productImages.upload(businessId, productId, file, email));
+    }
+
+    @DeleteMapping("/{productId}/image")
+    public ResponseEntity<?> removeImage(@PathVariable Long businessId, @PathVariable Long productId,
+                                         @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(productImages.remove(businessId, productId, email));
     }
 
     @PostMapping

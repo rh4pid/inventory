@@ -1,6 +1,7 @@
 "use client";
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { ProductImagePicker } from "@/components/products/ProductImage";
 import { useRouter, useParams } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +45,8 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [unitList, setUnitList] = useState<Unit[]>([]);
   const [packRows, setPackRows] = useState<PackRow[]>([]);
+  const [picture, setPicture] = useState<Blob | null>(null);
+  const [savedImage, setSavedImage] = useState<string | null>(null);
   const { settings } = useBusinessSettings();
 
   const { register, handleSubmit, setValue, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -51,6 +54,7 @@ export default function EditProductPage() {
   });
   const baseUnitId = watch("unitId");
   const categoryId = watch("categoryId");
+  const nameNow = watch("productName") ?? "";
 
   useEffect(() => {
     if (!activeBusiness || !params.id) return;
@@ -63,6 +67,7 @@ export default function EditProductPage() {
     ]).then(([product, catList, unitRes, packs]: [Product, Category[], Unit[], ProductUnit[]]) => {
       setUnitList(unitRes);
       setPackRows(toPackRows(packs));
+      setSavedImage(product.image ?? null);
       reset({
         productName:   product.productName,
         description:   product.description,
@@ -96,6 +101,7 @@ export default function EditProductPage() {
       if (packs) {
         await unitsApi.setForProduct(activeBusiness.businessId, Number(params.id), packs);
       }
+      if (picture) await productsApi.uploadImage(activeBusiness.businessId, Number(params.id), picture);
       toast.success("Product updated");
       router.push("/products");
     } catch (err) {
@@ -113,6 +119,15 @@ export default function EditProductPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            <ProductImagePicker name={nameNow} image={savedImage} onPick={setPicture}
+              onRemove={async () => {
+                if (!activeBusiness) return;
+                try {
+                  await productsApi.removeImage(activeBusiness.businessId, Number(params.id));
+                  setSavedImage(null);
+                  toast.success("Picture removed");
+                } catch (err) { toast.error(errorMessage(err, "Couldn't remove the picture")); }
+              }} />
             <div className="space-y-1.5">
               <Label>Product name *</Label>
               <Input {...register("productName")} />

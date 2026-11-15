@@ -7,6 +7,7 @@ import { useBusiness } from "@/context/BusinessContext";
 import { useCan, pageNeed, ROLE_LABEL } from "@/lib/access";
 import { Sidebar, MobileNav } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { BackButton } from "@/components/layout/BackButton";
 import { PageLoader } from "@/components/shared/LoadingSpinner";
 import { useAuth } from "@/context/AuthProvider";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
@@ -46,6 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex min-w-0 flex-1 flex-col">
             <Header onOpenMenu={() => setMenuOpen(true)} />
             <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 md:px-6">
+              <BackButton />
               {allowed ? children : (
                 <div className="mx-auto mt-16 max-w-md rounded-4xl border border-line/80 bg-surface p-8 text-center shadow-card">
                   <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-deep"><Lock className="h-5 w-5" /></span>

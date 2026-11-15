@@ -38,6 +38,7 @@ public class SecurityConfig {
                             authorizeHttp.requestMatchers("/auth").permitAll();
                             authorizeHttp.requestMatchers("/auth/refresh").permitAll();
                             authorizeHttp.requestMatchers("/auth/signup", "/auth/username-available").permitAll();
+                            authorizeHttp.requestMatchers(org.springframework.http.HttpMethod.GET, "/public/product-images/*").permitAll();
                             authorizeHttp.anyRequest().authenticated();
                         }
                 )

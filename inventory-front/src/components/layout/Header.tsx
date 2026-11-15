@@ -49,8 +49,15 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
         </button>
         <LogoMark className="h-8 w-8 md:hidden" />
         <div className="min-w-0">
-          <Wordmark className="text-[22px] md:text-[28px]" />
-          {activeBusiness && <p className="-mt-0.5 truncate text-xs text-ink-3">{activeBusiness.businessName}</p>}
+          {activeBusiness ? (
+            <>
+              <p className="max-w-[16rem] truncate text-[22px] font-semibold leading-tight tracking-tight text-ink md:max-w-[22rem] md:text-[26px]"
+                 title={activeBusiness.businessName}>
+                {activeBusiness.businessName}
+              </p>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-ink-3">Inventory</p>
+            </>
+          ) : <Wordmark className="text-[22px] md:text-[28px]" />}
         </div>
       </div>
 

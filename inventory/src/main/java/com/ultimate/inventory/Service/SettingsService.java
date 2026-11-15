@@ -17,7 +17,8 @@ import java.util.Date;
 public class SettingsService {
 
     /** Theme ids the app knows (kept in step with inventory-front/src/lib/themes.ts). */
-    public static final java.util.Set<String> THEMES = java.util.Set.of("market", "care", "fresh", "depot", "workshop", "bistro");
+    public static final java.util.Set<String> THEMES = java.util.Set.of("market", "care", "fresh", "depot", "workshop", "bistro",
+            "ocean", "sunset", "forest", "slate", "orchid", "clay", "boutique");
 
     private final BusinessSettingsRepository settingsRepo;
     private final BusinessAccessHelper accessHelper;

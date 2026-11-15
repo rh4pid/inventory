@@ -5,7 +5,8 @@
  *
  * Keep the ids in step with SettingsService.THEMES on the backend.
  */
-export type ThemeId = "market" | "care" | "fresh" | "depot" | "workshop" | "bistro";
+export type ThemeId = "market" | "care" | "fresh" | "depot" | "workshop" | "bistro"
+  | "ocean" | "sunset" | "forest" | "slate" | "orchid" | "clay" | "boutique";
 
 export interface Theme {
   id: ThemeId;
@@ -73,6 +74,55 @@ export const THEMES: Theme[] = [
     vars: { brand: "#a8324a", brandStrong: "#a8324a", brandDeep: "#87243a", brandSoft: "#f7e4e8",
       accent: "#b9850f", accentDeep: "#9a6d08", accentSoft: "#f8eed3", onAccent: INK,
       canvas: "#ede4df", frame: "#f9f4f1", surface2: "#f3ebe6", line: "#e8dbd3" },
+  },
+  {
+    id: "ocean", name: "Ocean", tagline: "Deep sea blue and coral: cool and confident",
+    suits: [],
+    vars: { brand: "#0e6ba8", brandStrong: "#0b5d93", brandDeep: "#094b77", brandSoft: "#e2f0f9",
+      accent: "#e8715a", accentDeep: "#c9573f", accentSoft: "#fde9e4", onAccent: INK,
+      canvas: "#e1e8ee", frame: "#f4f7fa", surface2: "#eaf0f5", line: "#d6e0e8" },
+  },
+  {
+    id: "sunset", name: "Sunset", tagline: "Burnt orange and violet: warm and bold",
+    suits: [],
+    vars: { brand: "#c2410c", brandStrong: "#b13a0a", brandDeep: "#8f2f08", brandSoft: "#fdeee5",
+      accent: "#7c3aed", accentDeep: "#6527c9", accentSoft: "#efe7fd", onAccent: "#ffffff",
+      canvas: "#efe6df", frame: "#faf5f1", surface2: "#f4ece6", line: "#e9ddd3" },
+  },
+  {
+    id: "forest", name: "Forest", tagline: "Pine green and harvest gold: natural and steady",
+    suits: [],
+    vars: { brand: "#1f6f50", brandStrong: "#1a5e44", brandDeep: "#144a36", brandSoft: "#e2f1ea",
+      accent: "#b7791f", accentDeep: "#96620f", accentSoft: "#f8eed9", onAccent: INK,
+      canvas: "#e2e9e4", frame: "#f4f7f5", surface2: "#eaf0ec", line: "#d7e1da" },
+  },
+  {
+    id: "slate", name: "Slate", tagline: "Charcoal and teal: quiet and corporate",
+    suits: [],
+    vars: { brand: "#334155", brandStrong: "#334155", brandDeep: "#1e293b", brandSoft: "#e8ecf1",
+      accent: "#0e7490", accentDeep: "#0b5e75", accentSoft: "#dff3f7", onAccent: "#ffffff",
+      canvas: "#e4e7eb", frame: "#f5f6f8", surface2: "#eceef2", line: "#dadee4" },
+  },
+  {
+    id: "orchid", name: "Orchid", tagline: "Royal purple and jade: premium and fresh",
+    suits: [],
+    vars: { brand: "#7e3fb8", brandStrong: "#7e3fb8", brandDeep: "#63309a", brandSoft: "#f1e8fa",
+      accent: "#0d7f74", accentDeep: "#0a675e", accentSoft: "#dcf2ef", onAccent: "#ffffff",
+      canvas: "#ebe5f0", frame: "#f8f5fa", surface2: "#f0ebf5", line: "#e3dbea" },
+  },
+  {
+    id: "clay", name: "Clay", tagline: "Terracotta and olive: earthy and handmade",
+    suits: [],
+    vars: { brand: "#b4532a", brandStrong: "#a84b24", brandDeep: "#8a3d1d", brandSoft: "#faeae2",
+      accent: "#5f7f2a", accentDeep: "#4b6620", accentSoft: "#edf3df", onAccent: "#ffffff",
+      canvas: "#eee5dd", frame: "#faf5f0", surface2: "#f3ebe3", line: "#e8dccf" },
+  },
+  {
+    id: "boutique", name: "Boutique", tagline: "Raspberry and indigo: fashion and beauty",
+    suits: [],
+    vars: { brand: "#be185d", brandStrong: "#be185d", brandDeep: "#9d174d", brandSoft: "#fce7f0",
+      accent: "#4338ca", accentDeep: "#3730a3", accentSoft: "#e7e6fb", onAccent: "#ffffff",
+      canvas: "#efe4e8", frame: "#faf4f6", surface2: "#f4eaee", line: "#e9dbe1" },
   },
 ];
 

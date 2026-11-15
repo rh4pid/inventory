@@ -1,4 +1,5 @@
 "use client";
+import { ProductThumb } from "@/components/products/ProductImage";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, X } from "lucide-react";
@@ -162,9 +163,7 @@ export default function POSPage() {
                   onClick={() => addToCart(product)}
                   className="flex flex-col items-start rounded-3xl border border-line/80 bg-surface shadow-card p-3 text-left shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all active:scale-95"
                 >
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
-                    {product.productName.slice(0, 2).toUpperCase()}
-                  </div>
+                  <ProductThumb name={product.productName} image={product.image} className="mb-2 aspect-square h-auto w-full rounded-2xl text-base" />
                   <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2">
                     {product.productName}
                   </p>
@@ -208,6 +207,7 @@ export default function POSPage() {
           ) : (
             cart.map((item) => (
               <div key={item.key} className="flex items-center gap-3 px-4 py-3">
+                <ProductThumb name={item.product.productName} image={item.product.image} className="h-10 w-10 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.product.productName}</p>
                   <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} per {item.unitName ?? item.product.unit?.name ?? "unit"}</p>

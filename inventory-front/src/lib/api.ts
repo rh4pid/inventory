@@ -187,7 +187,18 @@ export const products = {
     req<Product>(`/businesses/${businessId}/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   delete: (businessId: number, id: number) =>
     req<void>(`/businesses/${businessId}/products/${id}`, { method: "DELETE" }),
+  /** Sets the product's picture (send one already shrunk with shrinkImage). */
+  uploadImage: (businessId: number, id: number, image: Blob) => {
+    const body = new FormData();
+    body.append("file", image, "product.jpg");
+    return req<Product>(`/businesses/${businessId}/products/${id}/image`, { method: "POST", body });
+  },
+  removeImage: (businessId: number, id: number) =>
+    req<Product>(`/businesses/${businessId}/products/${id}/image`, { method: "DELETE" }),
 };
+
+/** Public link of a product picture (null when it has none). */
+export const productImageUrl = (key?: string | null) => (key ? `${BASE}/public/product-images/${key}` : null);
 
 // ── Categories ───────────────────────────────────────────────────────────────
 export const categories = {
