@@ -1,5 +1,5 @@
 import type {
-  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, ImportKind, ImportResult, TemplateInfo, User, BusinessMembership,
+  LoginPayload, LoginResponse, SignUpPayload, UsernameCheck, PublicProfile, NewCompanyPayload, ImportKind, ImportResult, TemplateInfo, Feature, ProductFeatureValue, User, BusinessMembership,
   Product, ProductPayload, Category, CategoryPayload,
   Supplier, SupplierPayload, Customer, CustomerPayload,
   Inventory, StockInPayload, StockOutPayload, StockTransferPayload, StockAdjustmentPayload,
@@ -201,6 +201,25 @@ export const products = {
 
 /** Public link of a product picture (null when it has none). */
 export const productImageUrl = (key?: string | null) => (key ? `${BASE}/public/product-images/${key}` : null);
+
+// ── Features (Color, Size, …) ────────────────────────────────────────────────
+export const features = {
+  list: (businessId: number) => req<Feature[]>(`/businesses/${businessId}/features`),
+  create: (businessId: number, name: string) =>
+    req<Feature>(`/businesses/${businessId}/features`, { method: "POST", body: JSON.stringify({ name }) }),
+  rename: (businessId: number, id: number, name: string) =>
+    req<Feature>(`/businesses/${businessId}/features/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
+  delete: (businessId: number, id: number) =>
+    req<void>(`/businesses/${businessId}/features/${id}`, { method: "DELETE" }),
+  forProduct: (businessId: number, productId: number) =>
+    req<ProductFeatureValue[]>(`/businesses/${businessId}/products/${productId}/features`),
+  /** Replaces the product's features (left out = removed). */
+  setForProduct: (businessId: number, productId: number, values: { featureId: number; value: string }[]) =>
+    req<ProductFeatureValue[]>(`/businesses/${businessId}/products/${productId}/features`, { method: "PUT", body: JSON.stringify(values) }),
+  /** Features of several products at once: { [productId]: values }. */
+  forProducts: (businessId: number, productIds: number[]) =>
+    req<Record<string, ProductFeatureValue[]>>(`/businesses/${businessId}/product-features${qs({ productIds: productIds.join(",") })}`),
+};
 
 // ── Categories ───────────────────────────────────────────────────────────────
 export const categories = {

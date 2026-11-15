@@ -2,13 +2,14 @@
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { ProductImagePicker } from "@/components/products/ProductImage";
+import { ProductFeaturesEditor, toFeaturePayload, toFeatureRows, type FeatureRow } from "@/components/products/ProductFeaturesEditor";
 import { useRouter, useParams } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { products as productsApi, categories as categoriesApi, units as unitsApi } from "@/lib/api";
+import { products as productsApi, categories as categoriesApi, units as unitsApi, features as featuresApi } from "@/lib/api";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { PackSizesEditor, toPackPayload, toPackRows, type PackRow } from "@/components/products/PackSizesEditor";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -19,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Category, Product, ProductUnit, Unit } from "@/Types";
+import type { Category, Product, ProductFeatureValue, ProductUnit, Unit } from "@/Types";
 
 const schema = z.object({
   productName:   z.string().min(1, "Required"),
@@ -47,6 +48,7 @@ export default function EditProductPage() {
   const [packRows, setPackRows] = useState<PackRow[]>([]);
   const [picture, setPicture] = useState<Blob | null>(null);
   const [savedImage, setSavedImage] = useState<string | null>(null);
+  const [featureRows, setFeatureRows] = useState<FeatureRow[]>([]);
   const { settings } = useBusinessSettings();
 
   const { register, handleSubmit, setValue, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -64,7 +66,9 @@ export default function EditProductPage() {
       categoriesApi.list(id),
       unitsApi.list(id),
       unitsApi.forProduct(id, Number(params.id)),
-    ]).then(([product, catList, unitRes, packs]: [Product, Category[], Unit[], ProductUnit[]]) => {
+      featuresApi.forProduct(id, Number(params.id)),
+    ]).then(([product, catList, unitRes, packs, featureValues]: [Product, Category[], Unit[], ProductUnit[], ProductFeatureValue[]]) => {
+      setFeatureRows(toFeatureRows(featureValues));
       setUnitList(unitRes);
       setPackRows(toPackRows(packs));
       setSavedImage(product.image ?? null);
@@ -91,6 +95,8 @@ export default function EditProductPage() {
     const canEditPacks = ["OWNER", "ADMIN", "MANAGER"].includes(activeBusiness.role);
     const packs = settings?.multipleUnits && canEditPacks ? toPackPayload(packRows) : null;
     if (typeof packs === "string") { toast.error(packs); return; }
+    const featureValues = toFeaturePayload(featureRows);
+    if (typeof featureValues === "string") { toast.error(featureValues); return; }
     try {
       await productsApi.update(activeBusiness.businessId, Number(params.id), {
         ...data,
@@ -101,6 +107,7 @@ export default function EditProductPage() {
       if (packs) {
         await unitsApi.setForProduct(activeBusiness.businessId, Number(params.id), packs);
       }
+      await featuresApi.setForProduct(activeBusiness.businessId, Number(params.id), featureValues);
       if (picture) await productsApi.uploadImage(activeBusiness.businessId, Number(params.id), picture);
       toast.success("Product updated");
       router.push("/products");
@@ -158,6 +165,13 @@ export default function EditProductPage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Features</CardTitle></CardHeader>
+          <CardContent>
+            {activeBusiness && <ProductFeaturesEditor businessId={activeBusiness.businessId} rows={featureRows} onChange={setFeatureRows} />}
           </CardContent>
         </Card>
 

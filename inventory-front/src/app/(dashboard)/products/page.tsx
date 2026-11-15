@@ -8,7 +8,7 @@ import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCan } from "@/lib/access";
 import { useBusiness } from "@/context/BusinessContext";
-import { products as productsApi } from "@/lib/api";
+import { products as productsApi, features as featuresApi } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, errorMessage } from "@/lib/utils";
-import type { Product } from "@/Types";
+import type { Product, ProductFeatureValue } from "@/Types";
 
 export default function ProductsPage() {
   const [view, setView] = useViewMode("products");
@@ -37,6 +37,7 @@ export default function ProductsPage() {
     if (q) setSearch(q);
   }, []);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [featureMap, setFeatureMap] = useState<Record<string, ProductFeatureValue[]>>({});
   const [deleting, setDeleting] = useState(false);
 
   const SIZE = 20;
@@ -50,6 +51,11 @@ export default function ProductsPage() {
       });
       setItems(res.content);
       setTotal(res.totalElements);
+      // Each product's features (Color: Red, Size: M…), shown under its name.
+      if (res.content.length > 0) {
+        featuresApi.forProducts(activeBusiness.businessId, res.content.map((p) => p.id))
+          .then(setFeatureMap).catch(() => setFeatureMap({}));
+      } else setFeatureMap({});
     } catch (err) {
       toast.error(errorMessage(err, "Failed to load products"));
     } finally {
@@ -134,6 +140,15 @@ export default function ProductsPage() {
                         <p className="font-medium text-sm">{p.productName}</p>
                         {p.description && (
                           <p className="text-xs text-gray-400 truncate max-w-xs">{p.description}</p>
+                        )}
+                        {(featureMap[p.id] ?? []).length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {featureMap[p.id].map((f) => (
+                              <span key={f.featureId} className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-2">
+                                <span className="text-ink-3">{f.featureName}:</span> {f.value}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

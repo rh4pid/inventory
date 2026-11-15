@@ -24,7 +24,7 @@ export interface SignUpPayload {
 export interface UsernameCheck { username: string; available: boolean; reason?: string | null; }
 /** What anyone may see about a person found by username. */
 // ── Spreadsheet uploads ──────────────────────────────────────────────────────
-export type ImportKind = "products" | "categories" | "locations" | "people" | "customers" | "suppliers" | "accounts" | "employees";
+export type ImportKind = "products" | "categories" | "product-features" | "locations" | "people" | "customers" | "suppliers" | "accounts" | "employees";
 
 /** One column of an upload template. */
 export interface TemplateColumn { key: string; header: string; required: boolean; help: string; example: string; options: string[]; }
@@ -753,3 +753,9 @@ export interface BusinessProfile {
   id: number; name: string; code: string; email?: string | null; contact?: string | null;
   secondaryContact?: string | null; logo?: string | null;
 }
+
+/** A feature such as Color or Size, with how many products use it and the values in use. */
+export interface Feature { id: number; name: string; productCount: number; values: string[]; }
+
+/** One of a product's features. */
+export interface ProductFeatureValue { featureId: number; featureName: string; value: string; }

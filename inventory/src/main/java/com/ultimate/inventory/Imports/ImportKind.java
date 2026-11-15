@@ -9,6 +9,7 @@ import java.util.Arrays;
 public enum ImportKind {
     PRODUCTS("products", "Products", "Your catalogue with prices, and optional opening stock per location."),
     CATEGORIES("categories", "Categories", "Product categories, with sub-categories inside them."),
+    PRODUCT_FEATURES("product-features", "Product features", "Features such as Color and Size, and each product's value for them."),
     SUPPLIERS("suppliers", "Suppliers", "The companies you buy from and who you deal with there."),
     EMPLOYEES("employees", "Payroll employees", "Position, department and salary for people on your team."),
     CUSTOMERS("customers", "Customers", "Customer names and contact details."),

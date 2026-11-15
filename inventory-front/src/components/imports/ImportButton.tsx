@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import type { ImportKind, ImportResult } from "@/Types";
 
 const LABEL: Record<ImportKind, string> = {
-  products: "products", categories: "categories", locations: "locations", people: "team members", customers: "customers",
+  products: "products", categories: "categories", "product-features": "product features", locations: "locations", people: "team members", customers: "customers",
   suppliers: "suppliers", accounts: "accounts", employees: "payroll employees",
 };
 

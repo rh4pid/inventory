@@ -333,4 +333,59 @@ class ImportsTest {
         verify(categories, times(3)).createCategory(eq(7L), dto.capture(), eq("me@x.com"));
         assertThat(dto.getAllValues()).extracting(com.ultimate.inventory.DTO.CategoryDTO::getParentId).containsExactly(null, 50L, 1L);
     }
+
+    // ── Product features ─────────────────────────────────────────────────────
+
+    private static com.ultimate.inventory.Model.Product product(Business b, long id, String name, String sku) {
+        com.ultimate.inventory.Model.Product p = new com.ultimate.inventory.Model.Product();
+        p.setId(id);
+        p.setBusiness(b);
+        p.setProductName(name);
+        p.setSku(sku);
+        p.setDeleted(false);
+        return p;
+    }
+
+    @Test
+    void productFeaturesFindProductsBySkuOrNameAndCreateNewFeatures() throws Exception {
+        Business b = company();
+        BusinessAccessHelper access = mock(BusinessAccessHelper.class);
+        when(access.requireBusiness(7L)).thenReturn(b);
+        com.ultimate.inventory.Repository.ProductRepository products = mock(com.ultimate.inventory.Repository.ProductRepository.class);
+        var shirt = product(b, 1L, "Polo shirt", "TSH-1");
+        var cap = product(b, 2L, "Cap", null);
+        when(products.findByBusinessAndDeletedFalse(eq(b), any())).thenReturn(new PageImpl<>(List.of(shirt, cap,
+                product(b, 3L, "Mug", "M-1"), product(b, 4L, "Mug", "M-2"))));
+        com.ultimate.inventory.Repository.FeatureRepository featureRepo = mock(com.ultimate.inventory.Repository.FeatureRepository.class);
+        var color = new com.ultimate.inventory.Model.Feature();
+        color.setId(9L);
+        color.setName("Color");
+        when(featureRepo.findByBusinessAndDeletedFalseOrderByNameAsc(b)).thenReturn(List.of(color));
+        com.ultimate.inventory.Service.FeatureService featureService = mock(com.ultimate.inventory.Service.FeatureService.class);
+        when(featureService.findOrCreate(eq(7L), any(), any())).thenReturn(color);
+        ImportService service = new ImportService(List.of(new ProductFeatureImporter(access, products, featureRepo, featureService)));
+
+        ImportResult bad = service.run(7L, ImportKind.PRODUCT_FEATURES, xlsx(
+                new Object[]{"Product", "Feature", "Value"},
+                new Object[]{"tsh-1", "Color", "Red"},
+                new Object[]{"Polo shirt", "color", "Blue"},   // same product + feature twice
+                new Object[]{"Mug", "Color", "White"},         // two products called Mug
+                new Object[]{"Hat", "Color", "Black"}),        // no such product
+                false, "me@x.com");
+        assertThat(bad.isSaved()).isFalse();
+        assertThat(bad.getErrors()).extracting(ImportResult.RowError::row).containsExactly(3, 4, 5);
+        verify(featureService, never()).setOne(any(), any(), any(), any());
+
+        ImportResult ok = service.run(7L, ImportKind.PRODUCT_FEATURES, xlsx(
+                new Object[]{"Product", "Feature", "Value"},
+                new Object[]{"TSH-1", "Color", "Red"},
+                new Object[]{"Cap", "Size", "L"},
+                new Object[]{"M-2", "Color", "White"}),
+                false, "me@x.com");
+        assertThat(ok.isSaved()).isTrue();
+        assertThat(ok.getCreated()).isEqualTo(3);
+        assertThat(ok.getNotes()).anyMatch(n -> n.contains("Size"));
+        verify(featureService).setOne(shirt, color, "Red", "me@x.com");
+        verify(featureService).findOrCreate(7L, "Size", "me@x.com");
+    }
 }

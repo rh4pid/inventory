@@ -2,13 +2,14 @@
 import { errorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { ProductImagePicker } from "@/components/products/ProductImage";
+import { ProductFeaturesEditor, toFeaturePayload, toFeatureRows, type FeatureRow } from "@/components/products/ProductFeaturesEditor";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
-import { products as productsApi, categories as categoriesApi, units as unitsApi } from "@/lib/api";
+import { products as productsApi, categories as categoriesApi, units as unitsApi, features as featuresApi } from "@/lib/api";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { PackSizesEditor, toPackPayload, type PackRow } from "@/components/products/PackSizesEditor";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -43,6 +44,7 @@ export default function NewProductPage() {
   const [unitList, setUnitList] = useState<Unit[]>([]);
   const [packRows, setPackRows] = useState<PackRow[]>([]);
   const [picture, setPicture] = useState<Blob | null>(null);
+  const [featureRows, setFeatureRows] = useState<FeatureRow[]>([]);
   const { settings } = useBusinessSettings();
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -69,6 +71,8 @@ export default function NewProductPage() {
     if (!activeBusiness) return;
     const packs = settings?.multipleUnits ? toPackPayload(packRows) : [];
     if (typeof packs === "string") { toast.error(packs); return; }
+    const featureValues = toFeaturePayload(featureRows);
+    if (typeof featureValues === "string") { toast.error(featureValues); return; }
     try {
       const created = await productsApi.create(activeBusiness.businessId, {
         ...data,
@@ -77,6 +81,9 @@ export default function NewProductPage() {
       });
       if (packs.length > 0) {
         await unitsApi.setForProduct(activeBusiness.businessId, created.id, packs);
+      }
+      if (featureValues.length > 0) {
+        await featuresApi.setForProduct(activeBusiness.businessId, created.id, featureValues);
       }
       if (picture) {
         try { await productsApi.uploadImage(activeBusiness.businessId, created.id, picture); }
@@ -130,6 +137,13 @@ export default function NewProductPage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Features</CardTitle></CardHeader>
+          <CardContent>
+            {activeBusiness && <ProductFeaturesEditor businessId={activeBusiness.businessId} rows={featureRows} onChange={setFeatureRows} />}
           </CardContent>
         </Card>
 

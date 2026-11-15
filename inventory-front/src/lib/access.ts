@@ -41,6 +41,7 @@ export const PAGE_RULES: { prefix: string; need: Capability | Capability[] }[] =
   { prefix: "/accounting", need: "MANAGE_ACCOUNTS" },
   { prefix: "/expenses", need: ["RECORD_EXPENSES", "APPROVE"] },
   { prefix: "/categories", need: "MANAGE_CATALOG" },
+  { prefix: "/features", need: "MANAGE_CATALOG" },
   { prefix: "/products/new", need: "MANAGE_CATALOG" },
   { prefix: "/inventory/counts", need: "COUNT" },
   { prefix: "/settings/team", need: "MANAGE_TEAM" },
