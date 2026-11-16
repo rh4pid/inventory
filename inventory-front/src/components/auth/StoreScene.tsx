@@ -108,17 +108,17 @@ export function StoreScene() {
       </svg>
 
       {/* Floating cards: what the scene adds up to */}
-      <div className="ls-float ls-f1 absolute right-0 top-2 w-[13.5rem] rounded-2xl bg-white/95 p-3.5 text-ink shadow-float">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-ink-3"><TrendingUp className="h-3.5 w-3.5 text-brand" /> Sales today</div>
-        <div className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight">{money(sales)}</div>
-        <div className="mt-1.5 flex h-6 items-end gap-1">
+      <div className="ls-float ls-f1 absolute right-0 top-0 w-[9.5rem] rounded-xl bg-white/95 p-2.5 text-ink shadow-float sm:top-2 sm:w-[13.5rem] sm:rounded-2xl sm:p-3.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-3 sm:text-xs"><TrendingUp className="h-3.5 w-3.5 text-brand" /> Sales today</div>
+        <div className="mt-0.5 text-sm font-semibold tabular-nums tracking-tight sm:text-lg">{money(sales)}</div>
+        <div className="mt-1.5 hidden h-6 items-end gap-1 sm:flex">
           {[40, 55, 35, 70, 60, 85, 100].map((h, i) => (
             <span key={i} className="ls-bar flex-1 rounded-sm bg-brand/80" style={{ height: `${h}%`, animationDelay: `${0.4 + i * 0.08}s` }} />
           ))}
         </div>
       </div>
 
-      <div className="ls-float ls-f2 absolute left-0 top-[46%] flex w-[13rem] items-center gap-2.5 rounded-2xl bg-white/95 p-3 text-ink shadow-float">
+      <div className="ls-float ls-f2 absolute left-0 top-[46%] hidden w-[13rem] items-center sm:flex gap-2.5 rounded-2xl bg-white/95 p-3 text-ink shadow-float">
         <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-warn-soft text-warn">
           <AlertTriangle className="h-4 w-4" />
           <span className="ls-ping absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-accent" />
@@ -129,9 +129,9 @@ export function StoreScene() {
         </span>
       </div>
 
-      <div className="ls-float ls-f3 absolute bottom-1 right-6 flex items-center gap-2 rounded-2xl bg-white/95 px-3 py-2.5 text-ink shadow-float">
-        <CheckCircle2 className="h-4 w-4 text-ok" />
-        <span className="text-xs font-semibold">Books balanced</span>
+      <div className="ls-float ls-f3 absolute bottom-0 right-2 flex items-center gap-1.5 rounded-xl bg-white/95 px-2.5 py-1.5 text-ink shadow-float sm:bottom-1 sm:right-6 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2.5">
+        <CheckCircle2 className="h-3.5 w-3.5 text-ok sm:h-4 sm:w-4" />
+        <span className="text-[11px] font-semibold sm:text-xs">Books balanced</span>
       </div>
     </div>
   );
