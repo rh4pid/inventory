@@ -144,9 +144,9 @@ body {
 /* The soft orange/blue glow behind the frame, as in the sample (light version). */
 .app-canvas {
   background:
-    radial-gradient(60rem 30rem at -10% -20%, color-mix(in srgb, var(--brand-orange) 28%, transparent), transparent 60%),
-    radial-gradient(50rem 26rem at 110% 120%, color-mix(in srgb, var(--brand-blue) 22%, transparent), transparent 60%),
-    radial-gradient(40rem 20rem at 50% 115%, color-mix(in srgb, var(--brand-orange) 16%, transparent), transparent 70%),
+    radial-gradient(60rem 30rem at -10% -20%, color-mix(in srgb, var(--brand-blue) 16%, transparent), transparent 60%),
+    radial-gradient(50rem 26rem at 110% 120%, color-mix(in srgb, var(--brand-blue) 20%, transparent), transparent 60%),
+    radial-gradient(40rem 20rem at 50% 115%, color-mix(in srgb, var(--brand-blue) 10%, transparent), transparent 70%),
     var(--canvas);
 }
 
@@ -193,50 +193,75 @@ body {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
-/* ── Sign-in blueprint (components/auth/BlueprintScene.tsx) ────────────────────
-   Draws once: box 0.3–2.6s, dimensions 2.7–3.4s, views and title block 3.3–4.3s.
-   Then a scanner line sweeps the drawing every 6 s. Every drawn line has pathLength=1. */
-/* The blueprint sheet: deep blue with a fine and a coarse grid. On phones and tablets it fills the
-   whole page (.bp-sheet-sm on the page); on laptops only the left panel (.bp-sheet-lg). */
-@media (max-width: 1023.98px) { .bp-sheet-sm { background-color: var(--brand-blue-deep); } }
-@media (min-width: 1024px) { .bp-sheet-lg { background-color: var(--brand-blue-deep); } }
-@media (max-width: 1023.98px) { .bp-sheet-sm {
-  background-image:
-    linear-gradient(rgb(255 255 255 / .10) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / .10) 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / .045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / .045) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-position: -1px -1px;
-} }
-@media (min-width: 1024px) { .bp-sheet-lg {
-  background-image:
-    linear-gradient(rgb(255 255 255 / .10) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / .10) 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / .045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / .045) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-position: -1px -1px;
-} }
-.bp-label { fill: #ffffff; font-family: var(--font-mono), ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; }
-.bp-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: bp-draw 1s cubic-bezier(.65,0,.35,1) both; }
-@keyframes bp-draw { to { stroke-dashoffset: 0; } }
-.bp-fade { opacity: 0; animation: bp-fade .55s ease-out both; }
-@keyframes bp-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.bp-bar { transform-box: fill-box; transform-origin: 50% 50%; transform: scaleY(0); animation: bp-bar .3s ease-out both; }
-@keyframes bp-bar { to { transform: scaleY(1); } }
-.bp-scan { opacity: 0; animation: bp-scan 6s ease-in-out 4.6s infinite; }
-@keyframes bp-scan { 0% { opacity: 0; transform: translateY(0); } 8% { opacity: 1; } 55% { opacity: 1; transform: translateY(290px); } 62%, 100% { opacity: 0; transform: translateY(290px); } }
-.bp-chip { animation: bp-chip 3.6s ease-out both; }
-@keyframes bp-chip { 0% { opacity: 0; transform: translateY(4px); } 12%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-/* The sign-in form slides in beside the drawing (no waiting). */
-@keyframes ls-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
-.ls-form { animation: ls-pop .55s cubic-bezier(.16,.9,.3,1.05) .1s both; }
+/* ── Login intro (components/auth/WarehouseScene.tsx) ─────────────────────────
+   0.3–3.4s  the person walks in pushing the hand truck (legs, bob, wheel)
+   3.5s      the top box hops from the truck onto the stack, lands at 4.2s
+   ~4.6s     the login card appears (LoginPage)
+   .lg-skip jumps everything to its final frame. Times are in step with LOGIN_INTRO_MS. */
+
+/* Person + truck glide in from the left with a natural ease. */
+.lg-mover { animation: lg-push 3.2s cubic-bezier(.16,.8,.3,1) .3s both; }
+@keyframes lg-push {
+  from { transform: translateX(-340px); opacity: 0.6; }
+  10%  { opacity: 1; }
+  to   { transform: translateX(296px); }
+}
+
+/* Walking legs: alternate swing, tight pivot at the hip. */
+.lg-leg { transform-box: fill-box; transform-origin: 50% 0; }
+.lg-leg-front { animation: lg-step .6s ease-in-out .3s 5 both; }
+.lg-leg-back  { animation: lg-step-alt .6s ease-in-out .3s 5 both; }
+@keyframes lg-step     { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(14deg); } }
+@keyframes lg-step-alt { 0%,100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-18deg); } }
+
+/* Subtle body bob in sync with the step cycle. */
+.lg-bob { animation: lg-bob .3s ease-in-out .3s 10 both; }
+@keyframes lg-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* Wheel spin. */
+.lg-wheel { transform-box: fill-box; transform-origin: 50% 50%; animation: lg-spin .6s linear .3s 5 both; }
+@keyframes lg-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* The truck's top box is hidden the moment the free hop-box takes over. */
+.lg-truckbox { animation: lg-hide 1ms linear 3.5s both; }
+@keyframes lg-hide { to { opacity: 0; } }
+
+.lg-hopwrap { opacity: 0; animation: lg-show 1ms linear 3.5s forwards; }
+@keyframes lg-show { to { opacity: 1; } }
+
+/* Box arcs from the truck up and over to the top of the stack. */
+.lg-hop { animation: lg-hop .75s cubic-bezier(.25,.6,.35,1) 3.5s both; }
+@keyframes lg-hop {
+  0%   { transform: translate(535px, 348px) rotate(-14deg); }
+  50%  { transform: translate(650px, 185px) rotate(-4deg); }
+  100% { transform: translate(759px, 255px) rotate(0); }
+}
+
+/* Box squash-and-stretch on landing. */
+.lg-land { transform-box: fill-box; transform-origin: 50% 100%; animation: lg-land .32s cubic-bezier(.22,.9,.4,1) 4.25s both; }
+@keyframes lg-land {
+  0%   { transform: scale(1.06, .88); }
+  55%  { transform: scale(.97, 1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Small dust puff on landing. */
+.lg-dust { opacity: 0; transform-box: fill-box; transform-origin: 50% 100%; animation: lg-dust .55s ease-out 4.25s both; }
+@keyframes lg-dust { 0% { opacity: .8; transform: scale(.3); } 100% { opacity: 0; transform: scale(1.7) translateY(-8px); } }
+
+/* Login card: lifts in gently. */
+.lg-card { animation: lg-card .5s cubic-bezier(.16,.9,.3,1.08) both; }
+@keyframes lg-card { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+.lg-veil { animation: lg-veil .45s ease-out both; }
+@keyframes lg-veil { from { opacity: 0; } to { opacity: 1; } }
+
+/* Skip: every timeline animation lands on its last frame immediately. */
+.lg-skip .lg-a { animation-delay: 0s !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+.lg-skip .lg-dust { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .bp-draw { animation: none; stroke-dashoffset: 0; }
-  .bp-fade, .bp-bar, .bp-chip { animation: none; opacity: 1; transform: none; }
-  .bp-scan { animation: none; display: none; }
-  .ls-form { animation: none; }
+  .lg-mover, .lg-leg-front, .lg-leg-back, .lg-bob, .lg-wheel,
+  .lg-hop, .lg-land, .lg-dust, .lg-card, .lg-veil { animation: none !important; }
 }
 
 /* ── Grid view for list tables (DataView) ───────────────────────────────────
@@ -295,47 +320,3 @@ body {
 .data-grid tbody td[colspan]::before { content: none; }
 /* Pictures grow to fill the card in grid view */
 .data-grid .grid-photo { width: 100%; height: auto; aspect-ratio: 4 / 3; margin-bottom: 0.5rem; font-size: 1.5rem; }
-
-/* ── Landing page (app/page.tsx, components/landing) ────────────────────────────
-   A presentation-deck look: monospace type, hairline grids, numbered tags, alternating dark
-   and dotted-light "slides". Things inside a .lp-slide animate when it scrolls into view
-   (Reveal adds .is-in); line drawings reuse .bp-draw and wait until then. */
-.lp { --lp-ink: #0c111d; --lp-paper: #eceef2; font-family: var(--font-geist-mono), ui-monospace, monospace; }
-.lp-dark { background: var(--lp-ink); color: #e9ecf3; }
-.lp-light {
-  background-color: var(--lp-paper); color: var(--lp-ink);
-  background-image: radial-gradient(rgb(12 17 29 / .22) 1px, transparent 1.3px);
-  background-size: 34px 34px; background-position: 17px 17px;
-}
-.lp-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6rem; padding: 0 .3rem; height: 1.15rem;
-  background: var(--brand-blue); color: #fff; font-size: 11px; line-height: 1; }
-.lp-tag-light { background: #fff; color: var(--brand-blue-deep); }
-.lp-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
-.lp-headline { font-weight: 500; text-transform: uppercase; letter-spacing: .01em; line-height: .98; }
-.lp-btn { position: relative; display: inline-flex; align-items: center; gap: .5rem; height: 2.75rem; padding: 0 1.1rem;
-  border: 1px solid currentColor; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
-  transition: background-color .2s ease, color .2s ease; }
-.lp-btn { white-space: nowrap; }
-@media (max-width: 639.98px) { .lp-nav .lp-btn { padding: 0 .65rem; letter-spacing: .08em; font-size: 11px; } }
-.lp-btn::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-top: 1px solid currentColor; border-right: 1px solid currentColor; }
-.lp-dark .lp-btn:hover { background: #fff; color: var(--lp-ink); }
-.lp-light .lp-btn:hover { background: var(--lp-ink); color: #fff; }
-.lp-btn-solid { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
-.lp-btn-solid:hover { background: var(--brand-blue-deep) !important; color: #fff !important; }
-.lp-corner { position: absolute; width: 12px; height: 12px; border-color: currentColor; opacity: .55; pointer-events: none; }
-/* reveal on scroll */
-.lp-rise { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.16,.8,.3,1); transition-delay: var(--d, 0s); }
-.is-in .lp-rise { opacity: 1; transform: none; }
-.lp-slide .bp-draw, .lp-slide .bp-fade, .lp-slide .bp-bar { animation-play-state: paused; }
-.lp-slide.is-in .bp-draw, .lp-slide.is-in .bp-fade, .lp-slide.is-in .bp-bar { animation-play-state: running; }
-.lp-progress > span { display: block; height: 100%; width: 0; background: currentColor; transition: width 1.6s cubic-bezier(.65,0,.35,1) .4s; }
-.is-in .lp-progress > span { width: var(--w); }
-.lp-dash-x { background-image: linear-gradient(90deg, currentColor 50%, transparent 0); background-size: 6px 1px; background-repeat: repeat-x; height: 1px; opacity: .55; }
-.lp-dash-y { background-image: linear-gradient(currentColor 50%, transparent 0); background-size: 1px 6px; background-repeat: repeat-y; width: 1px; opacity: .55; }
-.lp-live { width: 7px; height: 7px; border-radius: 9999px; background: #f2622e; animation: ls-ping 1.8s ease-out infinite; }
-@keyframes ls-ping { 0% { box-shadow: 0 0 0 0 rgb(242 98 46 / .55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(242 98 46 / 0); } }
-@media (prefers-reduced-motion: reduce) {
-  .lp-rise { opacity: 1; transform: none; transition: none; }
-  .lp-progress > span { width: var(--w); transition: none; }
-  .lp-live { animation: none; }
-}

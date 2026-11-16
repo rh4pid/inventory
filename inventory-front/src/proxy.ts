@@ -6,20 +6,15 @@ const REFRESH_COOKIE = "_ultimate_";
 
 /**
  * Coarse guard on the session cookie; the backend checks every request properly.
- * The landing page (/) and /login, /register are public; anyone can create an account.
+ * Anyone can create an account at /register; companies are created by their owners.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasCookie = !!request.cookies.get(REFRESH_COOKIE);
 
-  // The landing page: visitors see it; signed-in people go straight to the app.
-  if (pathname === "/") {
-    return hasCookie ? NextResponse.redirect(new URL("/overview", request.url)) : NextResponse.next();
-  }
-
   if (PUBLIC.some((p) => pathname.startsWith(p))) {
-    // Signed in already: into the app (the super admin is sent on to the admin console from there).
-    return hasCookie ? NextResponse.redirect(new URL("/overview", request.url)) : NextResponse.next();
+    // Signed in already: the app decides where to go (overview, or the admin console).
+    return hasCookie ? NextResponse.redirect(new URL("/", request.url)) : NextResponse.next();
   }
 
   if (!hasCookie) {
