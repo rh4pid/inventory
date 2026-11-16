@@ -5,8 +5,8 @@ import { BlueprintScene } from "./BlueprintScene";
 /**
  * Sign-in and sign-up pages.
  * - Laptops and up: the animated blueprint on a blue panel (left) beside the form (right).
- * - Phones and tablets: the blueprint fills the screen and the form floats over it as a
- *   frosted-glass card; its top overlaps the drawing so the lines show softly through.
+ * - Phones and tablets: the blueprint fills the screen and the form sits below the drawing
+ *   on a plain white card.
  * The form is ready straight away at every size.
  */
 export function AuthShell({ children }: { children: React.ReactNode }) {
@@ -29,12 +29,12 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         </div>
       </section>
 
-      <main className="relative z-10 -mt-12 flex flex-1 justify-center px-4 pb-8 sm:-mt-16 sm:px-8 sm:pb-12 lg:mt-0 lg:items-center lg:py-8">
+      <main className="relative z-10 flex flex-1 justify-center px-4 pb-8 pt-2 sm:px-8 sm:pb-12 lg:items-center lg:py-8">
         <div
           className={
-            "ls-form w-full max-w-md self-start rounded-[1.75rem] border border-white/60 bg-white/80 p-6 " +
-            "shadow-[0_24px_60px_-24px_rgb(10_20_70/0.65)] backdrop-blur-xl backdrop-saturate-150 sm:p-8 " +
-            "lg:self-auto lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none lg:backdrop-saturate-100"
+            "ls-form w-full max-w-md self-start rounded-2xl border border-line bg-surface p-6 " +
+            "shadow-[0_1px_2px_rgb(16_24_40/0.06),0_12px_32px_-16px_rgb(16_24_40/0.35)] sm:p-8 " +
+            "lg:self-auto lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
           }
         >
           {children}

@@ -143,7 +143,7 @@ export function BlueprintScene() {
           </svg>
 
           {/* phones: the one figure that matters */}
-          <div className="bp-fade absolute right-0 top-0 rounded-lg border border-white/40 bg-white/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider backdrop-blur-sm lg:hidden" style={at(3.4)}>
+          <div className="bp-fade absolute right-0 top-0 border border-white/60 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider lg:hidden" style={at(3.4)}>
             On hand <b className="ml-1 text-sm tabular-nums">{qty ?? "—"}</b>
           </div>
         </div>
