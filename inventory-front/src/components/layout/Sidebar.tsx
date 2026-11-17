@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Home, ScanLine, Package, Tag, Warehouse, ShoppingBag, Truck, Users, Building2,
@@ -15,7 +15,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { LogoMark } from "./Logo";
+import { CompanyLogo } from "./CompanyLogo";
 import { useCan, UPLOAD_CAPS, type Capability } from "@/lib/access";
 
 type Icon = React.ComponentType<{ className?: string }>;
@@ -40,22 +40,44 @@ export const NAV: { label: string; href: string; icon: Icon; need?: Capability |
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
 
+/** Rail buttons shrink on short screens (laptops, zoomed-in browsers) so the whole menu fits. */
+const SHORT = "[@media(max-height:860px)]:h-9 [@media(max-height:860px)]:w-9 [@media(max-height:860px)]:rounded-xl";
+
 function RailLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: Icon; active: boolean }) {
+  // The tooltip is placed on the screen (position: fixed) so the scrolling menu can't clip it.
+  const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+  const showTip = (e: React.SyntheticEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTip({ x: r.right + 12, y: r.top + r.height / 2 });
+  };
   return (
     <Link
       href={href}
       aria-label={label}
       aria-current={active ? "page" : undefined}
+      onMouseEnter={showTip}
+      onFocus={showTip}
+      onMouseLeave={() => setTip(null)}
+      onBlur={() => setTip(null)}
       className={cn(
-        "group relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all",
+        "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all",
+        SHORT,
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-frame",
         active
           ? "bg-brand-strong text-white shadow-[var(--shadow-brand)]"
           : "bg-surface-2 text-ink-2 hover:bg-white hover:text-ink hover:shadow-card"
       )}
     >
-      <Icon className="h-[20px] w-[20px]" />
-      <span className="rail-tip z-50 rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white shadow-float">{label}</span>
+      <Icon className="h-[20px] w-[20px] [@media(max-height:860px)]:h-[18px] [@media(max-height:860px)]:w-[18px]" />
+      {tip && (
+        <span
+          role="tooltip"
+          style={{ left: tip.x, top: tip.y }}
+          className="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white shadow-float"
+        >
+          {label}
+        </span>
+      )}
     </Link>
   );
 }
@@ -78,7 +100,7 @@ function UserMenu({ align = "start" }: { align?: "start" | "end" }) {
           aria-label="Your account"
           className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
-          <Avatar className="h-11 w-11 rounded-2xl">
+          <Avatar className={cn("h-11 w-11 rounded-2xl", SHORT)}>
             {user?.profilePicture && <AvatarImage src={user.profilePicture} className="rounded-2xl object-cover" />}
             <AvatarFallback className="rounded-2xl bg-brand-strong text-sm font-semibold text-white">
               {initials}
@@ -107,16 +129,17 @@ export function Sidebar() {
   const pathname = usePathname();
   const can = useCan();
   return (
-    <aside className="hidden w-[88px] shrink-0 flex-col items-center py-5 md:flex">
-      <Link href="/overview" aria-label="Inventory home" className="mb-5 flex h-12 w-12 items-center justify-center">
-        <LogoMark />
+    // Full height, never taller than the screen: the menu scrolls if it must, Settings and your account stay visible.
+    <aside className="hidden h-full min-h-0 w-[88px] shrink-0 flex-col items-center py-5 md:flex [@media(max-height:860px)]:py-3">
+      <Link href="/overview" aria-label="Home" className="mb-4 flex h-12 w-12 shrink-0 items-center justify-center [@media(max-height:860px)]:mb-2 [@media(max-height:860px)]:h-10 [@media(max-height:860px)]:w-10">
+        <CompanyLogo className="[@media(max-height:860px)]:h-8 [@media(max-height:860px)]:w-8" />
       </Link>
-      <nav aria-label="Main" className="flex flex-1 flex-col items-center gap-2 px-2 pb-2">
+      <nav aria-label="Main" className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden px-2 py-1 [@media(max-height:860px)]:gap-1.5">
         {NAV.filter((item) => can(item.need)).map((item) => (
           <RailLink key={item.href} {...item} active={isActive(pathname, item.href)} />
         ))}
       </nav>
-      <div className="mt-4 flex flex-col items-center gap-3">
+      <div className="mt-3 flex shrink-0 flex-col items-center gap-3 border-t border-line/70 pt-3 [@media(max-height:860px)]:mt-2 [@media(max-height:860px)]:gap-2 [@media(max-height:860px)]:pt-2">
         <RailLink href="/settings" label="Settings" icon={Settings} active={isActive(pathname, "/settings")} />
         <UserMenu align="end" />
       </div>
@@ -139,7 +162,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="absolute inset-y-3 left-3 flex w-[min(20rem,calc(100%-1.5rem))] flex-col rounded-4xl bg-frame p-4 shadow-float">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <LogoMark className="h-8 w-8" />
+            <CompanyLogo className="h-8 w-8" />
             <div>
               <div className="max-w-[12rem] truncate text-lg font-semibold text-ink">{activeBusiness?.businessName ?? "Inventory"}</div>
               {activeBusiness && <div className="text-xs font-medium uppercase tracking-[0.14em] text-ink-3">Inventory</div>}

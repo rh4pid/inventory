@@ -38,7 +38,8 @@ public class SecurityConfig {
                             authorizeHttp.requestMatchers("/auth").permitAll();
                             authorizeHttp.requestMatchers("/auth/refresh").permitAll();
                             authorizeHttp.requestMatchers("/auth/signup", "/auth/username-available").permitAll();
-                            authorizeHttp.requestMatchers(org.springframework.http.HttpMethod.GET, "/public/product-images/*").permitAll();
+                            authorizeHttp.requestMatchers("/auth/options", "/auth/google", "/auth/forgot-password", "/auth/reset-password").permitAll();
+                            authorizeHttp.requestMatchers(org.springframework.http.HttpMethod.GET, "/public/product-images/*", "/public/business-logos/*").permitAll();
                             authorizeHttp.anyRequest().authenticated();
                         }
                 )

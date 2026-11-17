@@ -2,7 +2,7 @@
 import { ImportButton } from "@/components/imports/ImportButton";
 import { confirmAction } from "@/context/ConfirmProvider";
 import { useCallback, useEffect, useState } from "react";
-import { Check, KeyRound, Loader2, MoreHorizontal, Pencil, Plus, RotateCw, UserMinus, X } from "lucide-react";
+import { Check, ChevronDown, KeyRound, Loader2, MoreHorizontal, Pencil, Plus, RotateCw, UserMinus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useBusiness } from "@/context/BusinessContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Monogram } from "@/components/dashboard/Panel";
 import { CredentialsCard } from "@/components/account/CredentialsCard";
-import type { PublicProfile, SentInvitation, Shop, TeamAdded, TeamList, TeamMember, UserRole } from "@/Types";
+import type { InvitationOffer, PublicProfile, SentInvitation, Shop, TeamAdded, TeamList, TeamMember, UserRole } from "@/Types";
 
 const ROLE: Record<string, { label: string; hint: string; everywhere: boolean }> = {
   OWNER:   { label: "Owner",   hint: "Everything, including settings, accounts, payroll and admins", everywhere: true },
@@ -197,7 +198,7 @@ export default function TeamPage() {
                     <div className="min-w-0">
                       <div className="truncate font-medium text-ink">{inv.name}</div>
                       <div className="truncate text-xs text-ink-3">
-                        @{inv.username} · invited by {inv.invitedBy} · expires {new Date(inv.expiresAt).toLocaleDateString()}
+                        @{inv.username}{inv.offer?.jobTitle ? ` · ${inv.offer.jobTitle}` : ""} · invited by {inv.invitedBy} · expires {new Date(inv.expiresAt).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -330,7 +331,10 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
   onAdded: (r: TeamAdded) => void; onInvited: (inv: SentInvitation) => void;
 }) {
   const blank = { firstName: "", lastName: "", email: "", phone: "" };
+  const blankOffer = { jobTitle: "", workingHours: "", startDate: "", pay: "", message: "" };
   const [mode, setMode] = useState<"invite" | "new">("invite");
+  const [offer, setOffer] = useState(blankOffer);
+  const [showOffer, setShowOffer] = useState(true);
   const [p, setP] = useState(blank);
   const [username, setUsername] = useState("");
   const [found, setFound] = useState<PublicProfile | null>(null);
@@ -342,6 +346,8 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
     if (!open) return;
     setMode("invite");
     setP(blank);
+    setOffer(blankOffer);
+    setShowOffer(true);
     setUsername("");
     setFound(null);
     setRole(roles.includes("CASHIER") ? "CASHIER" : roles[0]);
@@ -354,17 +360,27 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
     ? !!found && placed
     : p.firstName.trim() && p.lastName.trim() && p.email.trim() && placed;
 
+  const offerPayload = (): InvitationOffer | null => {
+    const o: InvitationOffer = {
+      jobTitle: offer.jobTitle.trim() || null, workingHours: offer.workingHours.trim() || null,
+      startDate: offer.startDate || null, pay: offer.pay.trim() || null, message: offer.message.trim() || null,
+    };
+    return Object.values(o).some(Boolean) ? o : null;
+  };
+  const setO = (k: keyof typeof offer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setOffer((x) => ({ ...x, [k]: e.target.value }));
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid) return;
     setBusy(true);
     try {
       if (mode === "invite" && found) {
-        onInvited(await teamApi.invite(businessId, { username: found.username, role, shopIds: everywhere ? [] : shopIds }));
+        onInvited(await teamApi.invite(businessId, { username: found.username, role, shopIds: everywhere ? [] : shopIds, offer: offerPayload() }));
       } else {
         onAdded(await teamApi.add(businessId, {
           firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim(),
-          phone: p.phone.trim() || undefined, role, shopIds: everywhere ? [] : shopIds,
+          phone: p.phone.trim() || undefined, role, shopIds: everywhere ? [] : shopIds, offer: offerPayload(),
         }));
       }
     } catch (err) { toast.error(errorMessage(err, mode === "invite" ? "Could not send the invitation" : "Could not add this person")); }
@@ -381,7 +397,7 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[92dvh] max-w-lg overflow-y-auto">
         <DialogHeader><DialogTitle>Add person</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div role="tablist" aria-label="How to add them" className="flex gap-1 rounded-2xl bg-surface-2 p-1">
@@ -406,6 +422,25 @@ function AddPersonDialog({ open, onClose, businessId, roles, locations, onAdded,
             {everywhere
               ? <p className="text-sm text-ink-3">{ROLE[role].label}s can use every location.</p>
               : <LocationPicker locations={locations} value={shopIds} onChange={setShopIds} />}
+          </div>
+          <div className="rounded-2xl border border-line/80">
+            <button type="button" onClick={() => setShowOffer((v) => !v)} aria-expanded={showOffer}
+              className="flex w-full items-center justify-between px-4 py-3 text-left">
+              <span>
+                <span className="block text-sm font-medium text-ink">Job details</span>
+                <span className="block text-xs text-ink-3">Optional. Shown on the invitation so they know what they&apos;re accepting.</span>
+              </span>
+              <ChevronDown className={cn("h-4 w-4 text-ink-3 transition-transform", showOffer && "rotate-180")} />
+            </button>
+            {showOffer && (
+              <div className="grid gap-3 border-t border-line/80 p-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="ap-title">Position</Label><Input id="ap-title" value={offer.jobTitle} onChange={setO("jobTitle")} placeholder="e.g. Senior cashier" maxLength={100} /></div>
+                <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="ap-hours">Working hours</Label><Input id="ap-hours" value={offer.workingHours} onChange={setO("workingHours")} placeholder="e.g. Mon–Fri 8am–5pm, Sat 9am–1pm" maxLength={300} /></div>
+                <div className="space-y-1.5"><Label htmlFor="ap-start">Start date</Label><Input id="ap-start" type="date" value={offer.startDate} onChange={setO("startDate")} /></div>
+                <div className="space-y-1.5"><Label htmlFor="ap-pay">Pay</Label><Input id="ap-pay" value={offer.pay} onChange={setO("pay")} placeholder="e.g. 2,500 a month" maxLength={100} /></div>
+                <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="ap-msg">Message</Label><Textarea id="ap-msg" value={offer.message} onChange={setO("message")} rows={3} maxLength={1000} placeholder="Anything else they should know" /></div>
+              </div>
+            )}
           </div>
           <p className="text-xs text-ink-3">
             {mode === "invite"

@@ -723,22 +723,37 @@ export interface TeamMember {
 
 export interface TeamList { members: TeamMember[]; rolesYouCanAssign: UserRole[]; invitations: SentInvitation[] }
 
+/** What the company offers, shown to the person before they accept. Every field is optional. */
+export interface InvitationOffer {
+  jobTitle?: string | null; workingHours?: string | null; startDate?: string | null; pay?: string | null; message?: string | null;
+}
+
 /** Invite someone who already has an account. */
-export interface InvitePayload { username: string; role: UserRole; shopIds: number[] }
+export interface InvitePayload { username: string; role: UserRole; shopIds: number[]; offer?: InvitationOffer | null }
 
 /** An open invitation, as the company sees it. */
 export interface SentInvitation {
   id: number; userId: number; username: string; name: string; role: UserRole;
   locations: { id: number; name: string }[]; invitedBy: string; sentAt: string; expiresAt: string; canManage: boolean;
+  offer?: InvitationOffer | null;
 }
 
 /** An open invitation, as the invited person sees it. */
 export interface MyInvitation {
-  id: number; businessId: number; businessName: string; businessLogo?: string; role: UserRole;
-  locations: string[]; invitedBy: string; sentAt: string; expiresAt: string;
+  id: number; businessId: number; businessName: string; businessLogo?: string | null; role: UserRole;
+  locations: { name: string; type?: string | null; address?: string | null }[];
+  invitedBy: string; invitedByUsername?: string | null; sentAt: string; expiresAt: string;
+  offer?: InvitationOffer | null;
+  company?: {
+    name: string; businessType?: string | null; email?: string | null; phone?: string | null; otherPhone?: string | null;
+    teamSize: number; locationCount: number; since?: string | null;
+  } | null;
 }
 
-export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[] }
+export interface NewTeamMember extends NewPerson { role: UserRole; shopIds: number[]; offer?: InvitationOffer | null }
+
+/** What the sign-in page may offer. */
+export interface AuthOptions { googleClientId: string | null; signUpOpen: boolean }
 
 /**
  * A new person: member + temporary password. Someone who already had an account: no member yet,

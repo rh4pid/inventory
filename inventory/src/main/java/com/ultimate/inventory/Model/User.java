@@ -50,4 +50,23 @@ public class User extends Model {
     @JsonIgnore
     @Column(name = "must_change_password")
     private Boolean mustChangePassword = false;
+
+    /** SHA-256 of the link sent by "Forgot password" (the link itself is never stored). */
+    @JsonIgnore
+    @Column(name = "password_reset_hash", length = 64)
+    private String passwordResetHash;
+
+    @JsonIgnore
+    @Column(name = "password_reset_expires")
+    private Date passwordResetExpires;
+
+    /** When the last reset email went out (to stop the button being used to flood an inbox). */
+    @JsonIgnore
+    @Column(name = "password_reset_sent_at")
+    private Date passwordResetSentAt;
+
+    /** Google's id for this person ("sub"), set the first time they sign in with Google. */
+    @JsonIgnore
+    @Column(name = "google_subject", unique = true, length = 64)
+    private String googleSubject;
 }

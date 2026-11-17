@@ -10,6 +10,8 @@ interface AuthContextType {
   login: (data: LoginPayload) => Promise<User>;
   /** Create an account and sign straight in. */
   signUp: (data: SignUpPayload) => Promise<User>;
+  /** Sign in (or create the account) with the ID token from Google's button. */
+  signInWithGoogle: (credential: string) => Promise<User>;
   /** Replace the signed-in user (e.g. after changing password). */
   setUser: (u: User) => void;
   logout: () => Promise<void>;
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (data: LoginPayload) => startSession(await auth.login(data)), [startSession]);
   const signUp = useCallback(async (data: SignUpPayload) => startSession(await auth.signUp(data)), [startSession]);
+  const signInWithGoogle = useCallback(async (credential: string) => startSession(await auth.google(credential)), [startSession]);
 
   const logout = useCallback(async () => {
     await auth.logout().catch(() => {});
@@ -52,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, signUp, logout, setUser }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, login, signUp, signInWithGoogle, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

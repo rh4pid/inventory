@@ -25,3 +25,4 @@ export function LogoMark({ className }: { className?: string }) {
 export function Wordmark({ className }: { className?: string }) {
   return <span className={cn("text-[26px] font-semibold tracking-tight text-ink", className)}>{APP_NAME}</span>;
 }
+

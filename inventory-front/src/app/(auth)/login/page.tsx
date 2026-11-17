@@ -11,6 +11,7 @@ import { errorMessage } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
 import { LogoMark } from "@/components/layout/Logo";
 import { WarehouseScene } from "@/components/auth/WarehouseScene";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,7 +121,10 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password" className="text-xs font-medium text-brand-deep hover:underline">Forgot password?</Link>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -146,6 +150,8 @@ export default function LoginPage() {
                 {isSubmitting ? "Signing in…" : "Sign in"}
               </Button>
             </form>
+
+            <GoogleButton />
 
             <p className="text-center text-sm text-ink-3">
               No account yet?{" "}

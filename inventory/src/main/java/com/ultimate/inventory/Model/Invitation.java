@@ -53,6 +53,24 @@ public class Invitation extends Model {
     @Column(name = "responded_at")
     private Date respondedAt;
 
+    // What the company offers, shown to the person before they accept (all optional).
+    @Column(name = "job_title", length = 100)
+    private String jobTitle;
+
+    /** Free text, e.g. "Mon-Fri 8am-5pm, Sat 9am-1pm". */
+    @Column(name = "working_hours", length = 300)
+    private String workingHours;
+
+    @Column(name = "start_date")
+    private java.time.LocalDate startDate;
+
+    /** Free text, e.g. "2,500 a month". */
+    @Column(name = "pay", length = 100)
+    private String pay;
+
+    @Column(name = "message", length = 1000)
+    private String message;
+
     public List<Long> locationIdList() {
         if (locationIds == null || locationIds.isBlank()) return List.of();
         return Arrays.stream(locationIds.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::valueOf).toList();

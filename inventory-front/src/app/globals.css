@@ -183,6 +183,10 @@ body {
 }
 .group:hover > .rail-tip, .group:focus-visible > .rail-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
 
+/* Scrolls without showing a scrollbar (the sidebar menu on short screens) */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

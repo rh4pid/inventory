@@ -23,10 +23,13 @@ public class SettingsController {
 
     private final SettingsService settingsService;
     private final UnitService unitService;
+    private final com.ultimate.inventory.Service.BusinessLogoService logoService;
 
-    public SettingsController(SettingsService settingsService, UnitService unitService) {
+    public SettingsController(SettingsService settingsService, UnitService unitService,
+                              com.ultimate.inventory.Service.BusinessLogoService logoService) {
         this.settingsService = settingsService;
         this.unitService = unitService;
+        this.logoService = logoService;
     }
 
     // ── Reference data ───────────────────────────────────────────────────────
@@ -82,6 +85,19 @@ public class SettingsController {
     public ResponseEntity<?> updateProfile(@PathVariable Long businessId, @RequestBody BusinessProfile body,
                                            @AuthenticationPrincipal String email) {
         return ResponseEntity.ok(settingsService.updateProfile(businessId, body, email));
+    }
+
+    /** Owners and admins upload the company logo (the browser shrinks it first). */
+    @PostMapping(value = "/businesses/{businessId}/logo", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadLogo(@PathVariable Long businessId,
+                                        @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                        @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(logoService.upload(businessId, file, email));
+    }
+
+    @DeleteMapping("/businesses/{businessId}/logo")
+    public ResponseEntity<?> removeLogo(@PathVariable Long businessId, @AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(logoService.remove(businessId, email));
     }
 
     // ── Units of measure ─────────────────────────────────────────────────────

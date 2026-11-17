@@ -21,6 +21,16 @@ services:
       # The frontend's public URL, e.g. https://inventory-web.onrender.com (used in the super admin credentials note).
       - key: APP_FRONTEND_URL
         sync: false
+      # Platform emails (password reset). MAIL_PROVIDER is resend or brevo; MAIL_FROM e.g. "Inventory <no-reply@yourdomain.com>".
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: MAIL_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Google sign-in: OAuth Web client ID (Google Cloud Console > APIs & Services > Credentials).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
 
   - type: web
     name: inventory-web

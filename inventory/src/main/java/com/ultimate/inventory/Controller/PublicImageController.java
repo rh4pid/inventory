@@ -15,9 +15,22 @@ import java.time.Duration;
 public class PublicImageController {
 
     private final ProductImageService images;
+    private final com.ultimate.inventory.Service.BusinessLogoService logos;
 
-    public PublicImageController(ProductImageService images) {
+    public PublicImageController(ProductImageService images, com.ultimate.inventory.Service.BusinessLogoService logos) {
         this.images = images;
+        this.logos = logos;
+    }
+
+    /** Company logos, shown on invitations and in the app frame. The key changes on every upload. */
+    @GetMapping("/public/business-logos/{key}")
+    public ResponseEntity<byte[]> businessLogo(@PathVariable String key) {
+        return logos.byKey(key)
+                .map(l -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(l.getContentType()))
+                        .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
+                        .body(l.getData()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/public/product-images/{key}")

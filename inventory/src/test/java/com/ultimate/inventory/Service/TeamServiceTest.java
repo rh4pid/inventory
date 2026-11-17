@@ -52,7 +52,9 @@ class TeamServiceTest {
         accounts = mock(UserAccounts.class);
         userRepo = mock(UserRepository.class);
         invitationRepo = mock(InvitationRepository.class);
-        team = new TeamService(access, memberRepo, shopUsers, accounts, userRepo, invitationRepo);
+        team = new TeamService(access, memberRepo, shopUsers, accounts, userRepo, invitationRepo,
+                mock(com.ultimate.inventory.Repository.ShopRepository.class),
+                mock(com.ultimate.inventory.Repository.BusinessSettingsRepository.class));
 
         company = new Business();
         company.setId(10L);

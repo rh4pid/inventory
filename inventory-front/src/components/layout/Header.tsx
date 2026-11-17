@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { locationTypeLabel } from "@/constants/Inventory";
-import { Wordmark, LogoMark } from "./Logo";
+import { Wordmark } from "./Logo";
+import { CompanyLogo } from "./CompanyLogo";
 import { NAV } from "./Sidebar";
 import { useCan } from "@/lib/access";
 
@@ -47,7 +48,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
         <button onClick={onOpenMenu} aria-label="Open menu" className={cn(iconBtn, "md:hidden")}>
           <Menu className="h-5 w-5" />
         </button>
-        <LogoMark className="h-8 w-8 md:hidden" />
+        <CompanyLogo className="h-8 w-8 md:hidden" />
         <div className="min-w-0">
           {activeBusiness ? (
             <>

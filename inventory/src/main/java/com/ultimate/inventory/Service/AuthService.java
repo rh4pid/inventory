@@ -32,6 +32,18 @@ public class AuthService {
     @Autowired private Security security;
     @Autowired private Usernames usernames;
     @org.springframework.beans.factory.annotation.Value("${app.self-signup:true}") private boolean selfSignUp;
+    @org.springframework.beans.factory.annotation.Value("${app.google.client-id:}") private String googleClientId;
+
+    private final java.net.http.HttpClient http = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(10)).build();
+    private final tools.jackson.databind.ObjectMapper json = new tools.jackson.databind.ObjectMapper();
+
+    /** What the sign-in page may offer (read at runtime, so no frontend rebuild is needed to switch Google on). */
+    public record AuthOptions(String googleClientId, boolean signUpOpen) {}
+
+    public AuthOptions options() {
+        return new AuthOptions(googleClientId == null || googleClientId.isBlank() ? null : googleClientId.trim(), selfSignUp);
+    }
 
     public void ensureSignUpOpen() {
         if (!selfSignUp) {
@@ -109,6 +121,106 @@ public class AuthService {
 
         log.info("New account: @{} ({})", username, email);
         return startSession(user, deviceInfo, ipAddress);
+    }
+
+    /**
+     * "Continue with Google": the browser gets an ID token from Google and we check it with Google.
+     * An account with the same (Google-verified) email is signed in and linked; otherwise a new
+     * account is created with a username made from the name. Google-only accounts can set a
+     * password later with "Forgot password".
+     */
+    @Transactional
+    public AuthResult googleSignIn(String credential, String deviceInfo, String ipAddress) {
+        String clientId = options().googleClientId();
+        if (clientId == null) throw new AppException(HttpStatus.NOT_FOUND, "Google sign-in is not set up");
+        if (credential == null || credential.isBlank()) throw new AppException(HttpStatus.BAD_REQUEST, "Google did not send a sign-in");
+        java.util.Map<?, ?> claims = verifyGoogleToken(credential.trim());
+        if (!clientId.equals(claim(claims, "aud"))) throw googleRefused();
+        String iss = String.valueOf(claim(claims, "iss"));
+        if (!iss.equals("accounts.google.com") && !iss.equals("https://accounts.google.com")) throw googleRefused();
+        long exp;
+        try { exp = Long.parseLong(String.valueOf(claim(claims, "exp"))); } catch (NumberFormatException e) { throw googleRefused(); }
+        if (exp * 1000 < System.currentTimeMillis()) throw googleRefused();
+        if (!"true".equalsIgnoreCase(claim(claims, "email_verified"))) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Your Google email is not verified");
+        }
+        String subject = claim(claims, "sub");
+        String email = UserAccounts.normalizeEmail(claim(claims, "email"));
+        if (subject == null || subject.isBlank()) throw googleRefused();
+
+        User user = userRepo.findByGoogleSubject(subject);
+        if (user == null) {
+            user = userRepo.findByEmail(email);
+            if (user == null) user = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(email);
+        }
+        if (user != null) {
+            if (Boolean.TRUE.equals(user.getSuperAdmin())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "The system administrator signs in with a password");
+            }
+            ensureCanSignIn(user);
+            if (user.getGoogleSubject() == null) {
+                user.setGoogleSubject(subject);
+                user.setUpdatedAt(new Date());
+                user.setUpdatedBy(email);
+                user = userRepo.save(user);
+            }
+            log.info("User signed in with Google: {}", user.getEmail());
+            return startSession(user, deviceInfo, ipAddress);
+        }
+
+        ensureSignUpOpen();
+        String first = blankToNull(claim(claims, "given_name"));
+        String last = blankToNull(claim(claims, "family_name"));
+        if (first == null) first = email.substring(0, email.indexOf('@'));
+        if (last == null) last = "";
+        User created = new User();
+        created.setFirstName(first);
+        created.setLastName(last);
+        created.setEmail(email);
+        created.setUsername(usernames.suggest(first, last));
+        created.setGoogleSubject(subject);
+        String picture = blankToNull(claim(claims, "picture"));
+        if (picture != null && picture.length() <= 255) created.setProfilePicture(picture);
+        // No password of their own yet: a random one nobody knows (they can set one with "Forgot password").
+        created.setPassword(security.hashPassword(security.generateRefreshToken().substring(0, 40)));
+        created.setMustChangePassword(false);
+        created.setSuperAdmin(false);
+        created.setLocked(false);
+        created.setSuspended(false);
+        created.setDeleted(false);
+        created.setCreatedBy(email);
+        created.setCreatedAt(new Date());
+        created = userRepo.save(created);
+        log.info("New account from Google: @{} ({})", created.getUsername(), email);
+        return startSession(created, deviceInfo, ipAddress);
+    }
+
+    private static String claim(java.util.Map<?, ?> claims, String key) {
+        Object v = claims.get(key);
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private java.util.Map<?, ?> verifyGoogleToken(String idToken) {
+        try {
+            var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(
+                            "https://oauth2.googleapis.com/tokeninfo?id_token=" + java.net.URLEncoder.encode(idToken, java.nio.charset.StandardCharsets.UTF_8)))
+                    .timeout(java.time.Duration.ofSeconds(15)).GET().build();
+            var res = http.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) throw googleRefused();
+            return json.readValue(res.body(), java.util.Map.class);
+        } catch (AppException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, "Couldn't reach Google. Try again.");
+        } catch (Exception e) {
+            log.warn("Google token check failed: {}", e.toString());
+            throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, "Couldn't reach Google. Try again.");
+        }
+    }
+
+    private static AppException googleRefused() {
+        return new AppException(HttpStatus.UNAUTHORIZED, "Google sign-in failed. Try again.");
     }
 
     /** For the sign-up form: can this username be taken? (Usernames are public handles, so this reveals nothing private.) */

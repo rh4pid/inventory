@@ -24,6 +24,41 @@ public class Auth {
 
     @Autowired private AuthService authService;
     @Autowired private Security security;
+    @Autowired private com.ultimate.inventory.Service.PasswordResetService passwordResets;
+
+    public record GoogleSignIn(String credential) {}
+    public record ForgotPassword(String login) {}
+    public record ResetPassword(String token, String password) {}
+
+    /** What the sign-in page can offer (Google button, sign-up link). */
+    @GetMapping("/options")
+    public ResponseEntity<?> options() {
+        return ResponseEntity.ok(authService.options());
+    }
+
+    /** "Continue with Google": signs in, or creates the account on first use. */
+    @PostMapping(value = "/google", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> google(@RequestBody GoogleSignIn body, HttpServletRequest request, HttpServletResponse response) {
+        AuthResult result = authService.googleSignIn(body == null ? null : body.credential(),
+                request.getHeader("User-Agent"), security.getClientAddress(request));
+        setRefreshCookie(response, result.refreshToken());
+        return ResponseEntity.ok(new LoginResponseDTO(result.accessToken(), result.user()));
+    }
+
+    /** Emails a reset link from the site's own address. Same answer whether or not the account exists. */
+    @PostMapping(value = "/forgot-password", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPassword body) {
+        passwordResets.requestReset(body == null ? null : body.login());
+        return ResponseEntity.ok(java.util.Map.of("message",
+                "If an account matches, we've emailed a link to reset the password. Check your inbox (and spam)."));
+    }
+
+    @PostMapping(value = "/reset-password", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPassword body) {
+        if (body == null) throw new com.ultimate.inventory.Exception.AppException(HttpStatus.BAD_REQUEST, "Fill in the form");
+        passwordResets.reset(body.token(), body.password());
+        return ResponseEntity.ok(java.util.Map.of("message", "Password changed. Sign in with your new password."));
+    }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> login(@RequestBody @Validated loginDTO dto,

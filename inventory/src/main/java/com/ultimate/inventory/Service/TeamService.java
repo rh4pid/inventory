@@ -43,6 +43,8 @@ public class TeamService {
     private final UserAccounts accounts;
     private final UserRepository userRepo;
     private final InvitationRepository invitationRepo;
+    private final com.ultimate.inventory.Repository.ShopRepository shopRepo;
+    private final com.ultimate.inventory.Repository.BusinessSettingsRepository settingsRepo;
 
     /** How long an invitation stays open. */
     static final long INVITE_DAYS = 14;
@@ -50,7 +52,11 @@ public class TeamService {
 
     public TeamService(BusinessAccessHelper accessHelper, BusinessUserRepo businessUserRepo,
                        ShopUsersRepository shopUsersRepo, UserAccounts accounts,
-                       UserRepository userRepo, InvitationRepository invitationRepo) {
+                       UserRepository userRepo, InvitationRepository invitationRepo,
+                       com.ultimate.inventory.Repository.ShopRepository shopRepo,
+                       com.ultimate.inventory.Repository.BusinessSettingsRepository settingsRepo) {
+        this.shopRepo = shopRepo;
+        this.settingsRepo = settingsRepo;
         this.userRepo = userRepo;
         this.invitationRepo = invitationRepo;
         this.accessHelper = accessHelper;
@@ -66,18 +72,39 @@ public class TeamService {
 
     public record Team(List<Member> members, List<UserRoles> rolesYouCanAssign, List<SentInvitation> invitations) {}
 
+    /** What the company offers, shown to the person before they accept. Every field is optional. */
+    public record Offer(String jobTitle, String workingHours, java.time.LocalDate startDate, String pay, String message) {
+        static final Offer NONE = new Offer(null, null, null, null, null);
+    }
+
     /** Invite someone who already has an account, by their username. */
-    public record Invite(String username, UserRoles role, List<Long> shopIds) {}
+    public record Invite(String username, UserRoles role, List<Long> shopIds, Offer offer) {
+        public Invite(String username, UserRoles role, List<Long> shopIds) { this(username, role, shopIds, null); }
+    }
 
     /** An open invitation, as the company sees it. */
     public record SentInvitation(Long id, Long userId, String username, String name, UserRoles role,
-                                 List<Location> locations, String invitedBy, Date sentAt, Date expiresAt, boolean canManage) {}
+                                 List<Location> locations, String invitedBy, Date sentAt, Date expiresAt, boolean canManage,
+                                 Offer offer) {}
 
     /** An open invitation, as the invited person sees it. */
     public record MyInvitation(Long id, Long businessId, String businessName, String businessLogo, UserRoles role,
-                               List<String> locations, String invitedBy, Date sentAt, Date expiresAt) {}
+                               List<InvitedLocation> locations, String invitedBy, String invitedByUsername,
+                               Date sentAt, Date expiresAt, Offer offer, Company company) {}
 
-    public record NewMember(String firstName, String lastName, String email, String phone, UserRoles role, List<Long> shopIds) {}
+    /** A location the person would work at. */
+    public record InvitedLocation(String name, String type, String address) {}
+
+    /** The company's public details, for someone deciding whether to join. */
+    public record Company(String name, String businessType, String email, String phone, String otherPhone,
+                          int teamSize, int locationCount, Date since) {}
+
+    public record NewMember(String firstName, String lastName, String email, String phone, UserRoles role, List<Long> shopIds,
+                            Offer offer) {
+        public NewMember(String firstName, String lastName, String email, String phone, UserRoles role, List<Long> shopIds) {
+            this(firstName, lastName, email, phone, role, shopIds, null);
+        }
+    }
 
     public record Change(UserRoles role, List<Long> shopIds) {}
 
@@ -121,9 +148,23 @@ public class TeamService {
                 .filter(inv -> usable(inv.getBusiness()))
                 .map(inv -> new MyInvitation(inv.getId(), inv.getBusiness().getId(), inv.getBusiness().getName(),
                         inv.getBusiness().getBusinessLogo(), inv.getRole(),
-                        locationsOf(inv).stream().map(Shop::getShopName).toList(),
-                        UserAccounts.displayName(inv.getInvitedBy()), inv.getCreatedAt(), inv.getExpiresAt()))
+                        locationsOf(inv).stream().map(shop -> new InvitedLocation(shop.getShopName(),
+                                shop.getLocationType() == null ? null : shop.getLocationType().name(), shop.getShopLocation())).toList(),
+                        UserAccounts.displayName(inv.getInvitedBy()), inv.getInvitedBy().getUsername(),
+                        inv.getCreatedAt(), inv.getExpiresAt(), offerOf(inv), companyOf(inv.getBusiness())))
                 .toList();
+    }
+
+    private Company companyOf(Business b) {
+        int team = (int) businessUserRepo.findAllByBusiness(b).stream().filter(BusinessUser::isActiveMember).count();
+        int places = (int) shopRepo.countActiveByBusiness(b);
+        String type = settingsRepo.findByBusiness(b).map(st -> st.getBusinessType() == null ? null : st.getBusinessType().getLabel()).orElse(null);
+        return new Company(b.getName(), type, b.getBusinessEmail(), b.getBusinessContact(), b.getBusinessSecondaryContact(),
+                team, places, b.getCreatedAt());
+    }
+
+    private static Offer offerOf(Invitation inv) {
+        return new Offer(inv.getJobTitle(), inv.getWorkingHours(), inv.getStartDate(), inv.getPay(), inv.getMessage());
     }
 
     // ── Commands ─────────────────────────────────────────────────────────────
@@ -141,7 +182,7 @@ public class TeamService {
         requireCanAssign(actor, role);
         List<Shop> shops = requireShops(req.shopIds(), businessId);
         User invitee = requireInvitable(req.username());
-        return sentView(openInvitation(business, invitee, actor, role, shops, email), actor);
+        return sentView(openInvitation(business, invitee, actor, role, shops, req.offer(), email), actor);
     }
 
     /** The person must already have an account. */
@@ -156,7 +197,7 @@ public class TeamService {
     }
 
     /** Creates (or refreshes) the open invitation for this person. */
-    Invitation openInvitation(Business business, User invitee, BusinessUser actor, UserRoles role, List<Shop> shops, String by) {
+    Invitation openInvitation(Business business, User invitee, BusinessUser actor, UserRoles role, List<Shop> shops, Offer offer, String by) {
         if (invitee.getId().equals(actor.getUser().getId())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "You're already in this company");
         }
@@ -179,6 +220,12 @@ public class TeamService {
         inv.setInvitedBy(actor.getUser());
         inv.setRole(role);
         inv.setLocationIdList(shops.stream().map(Shop::getId).toList());
+        Offer o = offer == null ? Offer.NONE : offer;
+        inv.setJobTitle(trim(o.jobTitle(), 100));
+        inv.setWorkingHours(trim(o.workingHours(), 300));
+        inv.setStartDate(o.startDate());
+        inv.setPay(trim(o.pay(), 100));
+        inv.setMessage(trim(o.message(), 1000));
         inv.setCreatedAt(now); // the "sent" date: a re-sent invitation counts from now
         inv.setExpiresAt(new Date(now.getTime() + INVITE_DAYS * DAY_MS));
         inv = invitationRepo.save(inv);
@@ -263,7 +310,7 @@ public class TeamService {
         // Someone who already has an account must accept: they get an invitation, not a membership.
         User existingUser = accounts.findExisting(req.email());
         if (existingUser != null) {
-            Invitation inv = openInvitation(business, existingUser, actor, role, shops, email);
+            Invitation inv = openInvitation(business, existingUser, actor, role, shops, req.offer(), email);
             return new Added(null, null, true, sentView(inv, actor));
         }
 
@@ -473,7 +520,13 @@ public class TeamService {
                 .map(shop -> new Location(shop.getId(), shop.getShopName())).toList();
         return new SentInvitation(inv.getId(), u.getId(), u.getUsername(), UserAccounts.displayName(u), inv.getRole(),
                 locations, UserAccounts.displayName(inv.getInvitedBy()), inv.getCreatedAt(), inv.getExpiresAt(),
-                assignableBy(actor).contains(inv.getRole()));
+                assignableBy(actor).contains(inv.getRole()), offerOf(inv));
+    }
+
+    private static String trim(String s, int max) {
+        if (s == null || s.isBlank()) return null;
+        String t = s.trim();
+        return t.length() > max ? t.substring(0, max) : t;
     }
 
     private Member view(BusinessUser m, BusinessUser actor) {

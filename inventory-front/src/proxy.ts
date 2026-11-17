@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const PUBLIC = ["/login", "/register"];
+/** Open whether or not you're signed in (a reset link must work from any browser). */
+const ALWAYS_OPEN = ["/forgot-password", "/reset-password"];
 const REFRESH_COOKIE = "_ultimate_";
 
 /**
@@ -11,6 +13,8 @@ const REFRESH_COOKIE = "_ultimate_";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasCookie = !!request.cookies.get(REFRESH_COOKIE);
+
+  if (ALWAYS_OPEN.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   if (PUBLIC.some((p) => pathname.startsWith(p))) {
     // Signed in already: the app decides where to go (overview, or the admin console).

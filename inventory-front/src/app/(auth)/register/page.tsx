@@ -7,6 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { errorMessage } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
 import { LogoMark } from "@/components/layout/Logo";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { UsernameField, cleanUsername, usernameProblem, type UsernameStatus } from "@/components/account/UsernameField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,8 @@ export default function RegisterPage() {
               <p className="text-center text-xs text-ink-3">Still needed: {missing.join(", ")}.</p>
             )}
           </form>
+
+          <GoogleButton text="signup_with" />
 
           <p className="text-center text-sm text-ink-3">
             Already have an account?{" "}
